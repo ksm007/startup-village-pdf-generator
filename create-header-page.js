@@ -65,6 +65,39 @@ const drawText = (
   });
 };
 
+// Helper to check if we need a new page and create one
+const checkAndAddNewPage = (pdfDoc, cursorY, font, boldFont, italicFont) => {
+  const MIN_Y = MARGIN + 30; // Minimum Y position before adding new page
+  if (cursorY < MIN_Y) {
+    const newPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    const newCursorY = PAGE_HEIGHT - MARGIN;
+
+    // Add footer to the new page
+    const footerY = MARGIN - 10;
+    newPage.drawText("REI 7-6 (8/9/2021)", {
+      x: MARGIN,
+      y: footerY,
+      size: 8,
+      font: font,
+      color: BLACK,
+    });
+
+    const footerText =
+      "Promulgated by the Texas Real Estate Commission • (512) 936-3000 • www.trec.texas.gov";
+    const footerTextWidth = font.widthOfTextAtSize(footerText, 8);
+    newPage.drawText(footerText, {
+      x: (PAGE_WIDTH - footerTextWidth) / 2,
+      y: footerY,
+      size: 8,
+      font: font,
+      color: BLACK,
+    });
+
+    return { page: newPage, cursorY: newCursorY };
+  }
+  return null;
+};
+
 // ---- Main ------------------------------------------------------------------
 (async () => {
   try {
@@ -78,13 +111,19 @@ const drawText = (
 
     // Create PDF
     const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    let page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
 
     // Embed fonts
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const italicFont = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
-
+    const smallFont = await pdfDoc.embedFont(StandardFonts.Helvetica, 8);
+    const boldAndUnderlineFont = await pdfDoc.embedFont(
+      StandardFonts.HelveticaBoldOblique
+    );
+    const underlineFont = await pdfDoc.embedFont(
+      StandardFonts.HelveticaOblique
+    );
     console.log("✅ Embedded fonts");
 
     let cursorY = PAGE_HEIGHT - MARGIN;
@@ -125,7 +164,7 @@ const drawText = (
     }
 
     // Draw main title
-    const titleX = logoX + logoWidth ;
+    const titleX = logoX + logoWidth;
     const titleY = cursorY - 35;
     drawText(
       page,
@@ -143,7 +182,7 @@ const drawText = (
     // ========================================================================
 
     const boxX = MARGIN;
-    const boxY = cursorY - 120;  // change this to vary the height
+    const boxY = cursorY - 120; // change this to vary the height
     const boxWidth = PAGE_WIDTH - 2 * MARGIN;
     const boxHeight = 140;
 
@@ -339,6 +378,19 @@ const drawText = (
     // RESPONSIBILITY OF THE INSPECTOR SECTION
     // ========================================================================
 
+    // Check if we need a new page before section header
+    let pageCheck = checkAndAddNewPage(
+      pdfDoc,
+      cursorY - 30,
+      font,
+      boldFont,
+      italicFont
+    );
+    if (pageCheck) {
+      page = pageCheck.page;
+      cursorY = pageCheck.cursorY;
+    }
+
     drawText(
       page,
       "RESPONSIBILITY OF THE INSPECTOR",
@@ -349,62 +401,257 @@ const drawText = (
     );
     cursorY -= 18;
 
-    const respText = [
+    const inspectorResponsibilityText = [
       "This inspection is governed by the Texas Real Estate Commission (TREC) Standards of Practice (SOPs), which dictates the",
       "minimum requirements for a real estate inspection.",
+      "",
+      "The inspector IS required to:",
+      "•    use this Property Inspection Report form for the inspection;",
+      "•    inspect only those components and conditions that are present, visible, and accessible at the time of the inspection;",
+      "•    indicate whether each item was inspected, not inspected, or not present;",
+      "•    indicate an item as Deficient (D) if a condition exists that adversely and materially affects the performance of a system or",
+      "     component OR constitutes a hazard to life, limb or property as specified by the SOPs; and",
+      "•    explain the inspector's findings in the corresponding section in the body of the report form.",
+      "",
+      "The inspector IS NOT required to:",
+      "•    identify all potential hazards;",
+      "•    turn on decommissioned equipment, systems, utilities, or apply an open flame or light a pilot to operate any appliance;",
+      "•    climb over obstacles, move furnishings or stored items;",
+      "•    prioritize or emphasize the importance of one deficiency over another;",
+      "•    provide follow-up services to verify that proper repairs have been made; or",
+      "•    inspect system or component listed under the optional section of the SOPs (22 TAC 535.233).",
     ];
 
-    respText.forEach((line) => {
+    inspectorResponsibilityText.forEach((line) => {
+      // Check if we need a new page
+      const pageCheck = checkAndAddNewPage(
+        pdfDoc,
+        cursorY,
+        font,
+        boldFont,
+        italicFont
+      );
+      if (pageCheck) {
+        page = pageCheck.page;
+        cursorY = pageCheck.cursorY;
+      }
+
       drawText(page, line, MARGIN, cursorY, 9, font);
       cursorY -= 12;
     });
 
     cursorY -= 8;
 
-    drawText(page, "The inspector IS required to:", MARGIN, cursorY, 9, font);
-    cursorY -= 16;
+    // ========================================================================
+    // RESPONSIBILITY OF THE CLIENT SECTION
+    // ========================================================================
 
-    const bulletPoints = [
-      "use this Property Inspection Report form for the inspection;",
-      "inspect only those components and conditions that are present, visible, and accessible at the time of the inspection;",
-      "indicate whether each item was inspected, not inspected, or not present;",
-      "indicate an item as Deficient (D) if a condition exists that adversely and materially affects the performance of a system or",
-      "component OR constitutes a hazard to life, limb or property as specified by the SOPs; and",
-      "explain the inspector's findings in the corresponding section in the body of the report form.",
+    // Check if we need a new page before section header
+    pageCheck = checkAndAddNewPage(
+      pdfDoc,
+      cursorY - 30,
+      font,
+      boldFont,
+      italicFont
+    );
+    if (pageCheck) {
+      page = pageCheck.page;
+      cursorY = pageCheck.cursorY;
+    }
+
+    drawText(
+      page,
+      "RESPONSIBILITY OF THE CLIENT",
+      MARGIN,
+      cursorY,
+      11,
+      boldFont
+    );
+    cursorY -= 18;
+
+    const clientResponsibilityText = [
+      "While items identified as Deficient (D) in an inspection report DO NOT obligate any party to make repairs or take other actions, in",
+      "the event that any further evaluations are needed, it is the responsibility of the client to obtain further evaluations and/or cost",
+      "estimates from qualified service professionals regarding any items reported as Deficient (D). It is recommended that any further",
+      "evaluations and/or cost estimates take place prior to the expiration of any contractual time limitations, such as option periods.",
+      "",
+      "Please Note: Evaluations performed by service professionals in response to items reported as Deficient (D) on the report may lead",
+      "to the discovery of additional deficiencies that were not present, visible, or accessible at the time of the inspection. Any repairs",
+      "made after the date of the inspection may render information contained in this report obsolete or invalid.",
     ];
 
-    const bulletX = MARGIN + 15;
-    bulletPoints.forEach((line) => {
-      drawText(page, "•", MARGIN + 5, cursorY + 1, 9, font);
-
-      // Handle multi-line bullet points
-      if (line.length > 100) {
-        const words = line.split(" ");
-        let currentLine = "";
-
-        words.forEach((word) => {
-          const testLine = currentLine + (currentLine ? " " : "") + word;
-          if (
-            font.widthOfTextAtSize(testLine, 9) <
-            PAGE_WIDTH - bulletX - MARGIN
-          ) {
-            currentLine = testLine;
-          } else {
-            drawText(page, currentLine, bulletX, cursorY, 9, font);
-            cursorY -= 12;
-            currentLine = word;
-          }
-        });
-
-        if (currentLine) {
-          drawText(page, currentLine, bulletX, cursorY, 9, font);
-        }
-      } else {
-        drawText(page, line, bulletX, cursorY, 9, font);
+    clientResponsibilityText.forEach((line) => {
+      // Check if we need a new page
+      pageCheck = checkAndAddNewPage(
+        pdfDoc,
+        cursorY,
+        font,
+        boldFont,
+        italicFont
+      );
+      if (pageCheck) {
+        page = pageCheck.page;
+        cursorY = pageCheck.cursorY;
       }
 
+      drawText(page, line, MARGIN, cursorY, 9, font);
       cursorY -= 12;
     });
+
+    cursorY -= 8;
+
+    // ========================================================================
+    // REPORT LIMITATIONS SECTION
+    // ========================================================================
+
+    // Check if we need a new page before section header
+    pageCheck = checkAndAddNewPage(
+      pdfDoc,
+      cursorY - 30,
+      font,
+      boldFont,
+      italicFont
+    );
+    if (pageCheck) {
+      page = pageCheck.page;
+      cursorY = pageCheck.cursorY;
+    }
+
+    drawText(page, "REPORT LIMITATIONS", MARGIN, cursorY, 11, boldFont);
+    cursorY -= 18;
+
+    const reportLimitationsText = [
+      "This report is provided for the benefit of the named client and is based on observations made by the named inspector on the date the",
+      "inspection was performed (indicated above).",
+      "",
+      "ONLY those items specifically noted as being inspected on the report were inspected.",
+      "",
+      "This inspection IS NOT:",
+      "•    a technically exhaustive inspection of the structure, its systems, or its components and may not reveal all deficiencies;",
+      "•    an inspection to verify compliance with any building codes;",
+      "•    an inspection to verify compliance with manufacturer's installation instructions for any system or component and DOES NOT",
+      "     imply insurability or warrantability of the structure or its components.",
+    ];
+
+    reportLimitationsText.forEach((line) => {
+      // Check if we need a new page
+      pageCheck = checkAndAddNewPage(
+        pdfDoc,
+        cursorY,
+        font,
+        boldFont,
+        italicFont
+      );
+      if (pageCheck) {
+        page = pageCheck.page;
+        cursorY = pageCheck.cursorY;
+      }
+
+      drawText(page, line, MARGIN, cursorY, 9, font);
+      cursorY -= 12;
+    });
+
+    cursorY -= 8;
+
+    // ========================================================================
+    // NOTICE CONCERNING HAZARDOUS CONDITIONS SECTION
+    // ========================================================================
+
+    // Check if we need a new page before section header
+    pageCheck = checkAndAddNewPage(
+      pdfDoc,
+      cursorY - 30,
+      font,
+      boldFont,
+      italicFont
+    );
+    if (pageCheck) {
+      page = pageCheck.page;
+      cursorY = pageCheck.cursorY;
+    }
+
+    drawText(
+      page,
+      "NOTICE CONCERNING HAZARDOUS CONDITIONS, DEFICIENCIES, AND CONTRACTUAL AGREEMENTS",
+      MARGIN,
+      cursorY,
+      10,
+      boldAndUnderlineFont
+    );
+    cursorY -= 18;
+
+    const hazardousConditionsText = [
+      "Conditions may be present in your home that did not violate building codes or common practices in effect when the home",
+      "was constructed but are considered hazardous by today's standards. Such conditions that were part of the home prior to the",
+      "adoption of any current codes prohibiting them may not be required to be updated to meet current code requirements.",
+      "However, if it can be reasonably determined that they are present at the time of the inspection, the potential for injury or",
+      "property loss from these conditions is significant enough to require inspectors to report them as Deficient (D). Examples of",
+      "such hazardous conditions include:",
+      "",
+      "•    malfunctioning, improperly installed, or missing ground fault circuit protection (GFCI) devices and arc-fault (AFCI) devices;",
+      "•    ordinary glass in locations where modern construction techniques call for safety glass;",
+      "•    malfunctioning or lack of fire safety features such as smoke alarms, fire-rated doors in certain locations, and functional",
+      "     emergency escape and rescue openings in bedrooms;",
+      "•    malfunctioning carbon monoxide alarms;",
+      "•    excessive spacing between balusters on stairways and porches;",
+      "•    improperly installed appliances;",
+      "•    improperly installed or defective safety devices;",
+      "•    lack of electrical bonding and grounding; and",
+      "•    lack of bonding on gas piping, including corrugated stainless steel tubing (CSST).",
+      "",
+      "Please Note: items identified as Deficient (D) in an inspection report DO NOT obligate any party to make repairs or take other",
+      "actions. The decision to correct a hazard or any deficiency identified in an inspection report is left up to the parties to the contract",
+      "for the sale or purchase of the home.",
+      "",
+      "This property inspection report may include an inspection agreement (contract), addenda, and other information related to property",
+      "conditions.",
+      "",
+      'INFORMATION INCLUDED UNDER "ADDITIONAL INFORMATION PROVIDED BY INSPECTOR", OR PROVIDED AS',
+      "AN ATTACHMENT WITH THE STANDARD FORM, IS NOT REQUIRED BY THE COMMISSION AND MAY CONTAIN",
+      "CONTRACTUAL TERMS BETWEEN THE INSPECTOR AND YOU, AS THE CLIENT. THE COMMISSION DOES NOT",
+      "REGULATE CONTRACTUAL TERMS BETWEEN PARTIES. IF YOU DO NOT UNDERSTAND THE EFFECT OF ANY",
+      "CONTRACTUAL TERM CONTAINED IN THIS SECTION OR ANY ATTACHMENTS, CONSULT AN ATTORNEY.",
+    ];
+
+    hazardousConditionsText.forEach((line) => {
+      // Check if we need a new page
+      pageCheck = checkAndAddNewPage(
+        pdfDoc,
+        cursorY,
+        font,
+        boldFont,
+        italicFont
+      );
+      if (pageCheck) {
+        page = pageCheck.page;
+        cursorY = pageCheck.cursorY;
+      }
+
+      drawText(page, line, MARGIN, cursorY, 9, underlineFont);
+      cursorY -= 12;
+    });
+
+    const doubleUnderlineY = cursorY - 10;
+    drawLine(
+      page,
+      MARGIN,
+      doubleUnderlineY,
+      PAGE_WIDTH - MARGIN,
+      doubleUnderlineY,
+      1,
+      BLACK
+    );
+    drawLine(
+      page,
+      MARGIN,
+      doubleUnderlineY - 2,
+      PAGE_WIDTH - MARGIN,
+      doubleUnderlineY - 2,
+      1,
+      BLACK
+    );
+
+    cursorY -= 8;
 
     // ========================================================================
     // FOOTER - Page number area
