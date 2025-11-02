@@ -152,13 +152,24 @@ async function addCommentsToLineItem(comment, page, font, margin, pos, doc, comm
   const SEPARATOR_GAP = 10;
   const LINE_THICKNESS = 1;
 
-  const drawWrapped = async (text, x, maxWidth, size = 10, lineH = 12, useFont = romanFont) => {
+  const drawWrapped = async (
+    text,
+    x,
+    maxWidth,
+    size = 10,
+    lineH = 12,
+    useFont = romanFont,
+    color = rgb(0, 0, 0),
+    separators = [' '],
+    link = null,
+    underline = false,
+  ) => {
     if (!text) return 0;
     const widthFn = t => useFont.widthOfTextAtSize(t, size);
-    const lines = breakTextIntoLines(text, [' '], maxWidth, widthFn);
+    const lines = breakTextIntoLines(text, separators, maxWidth, widthFn);
     for (const line of lines) {
       currentPage = await ensureSpace(doc, pos, currentPage, font, lineH, headerText);
-      currentPage.drawText(line, { x, y: pos.y, size, font: useFont, color: rgb(0,0,0) });
+      currentPage.drawText(line, { x, y: pos.y, size, font: useFont, color, link, underline });
       pos.y -= lineH;
     }
     return lines.length;
@@ -233,6 +244,28 @@ async function addCommentsToLineItem(comment, page, font, margin, pos, doc, comm
         pos.y -= (rowHeight + rowSpacing);
         i += columns;
       }
+    }
+  }
+
+  // Video links: render as "Video link n: <url>" (clickable, blue, underlined), allowing wraps at common URL separators
+  const videos = Array.isArray(comment.videos) ? comment.videos.filter(v => v && v.url) : [];
+  if (videos.length > 0) {
+    const urlSeparators = [' ', '/', ':', '?', '&', '=', '-', '_', '.'];
+    for (let i = 0; i < videos.length; i++) {
+      const v = videos[i];
+      const line = `Video link ${i + 1}: ${v.url}`;
+      await drawWrapped(
+        line,
+        lineItemContentStartX,
+        contentWidth,
+        10,
+        12,
+        romanFont,
+        rgb(0, 0, 1),
+        urlSeparators,
+        v.url,
+        true,
+      );
     }
   }
 

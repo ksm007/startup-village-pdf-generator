@@ -333,6 +333,35 @@ async function addCommentsToLineItem(comment, page, font, margin, pos, doc, comm
             }
         }
     }
+
+    // Video links: render as "Video link n: <url>" (blue, underlined, clickable), with wrapping at common URL separators
+    const videos = Array.isArray(comment.videos) ? comment.videos.filter(v => v && v.url) : [];
+    if (videos.length > 0) {
+      const romanFont = await doc.embedFont(StandardFonts.TimesRoman);
+      const maxWidth = currentPage.getSize().width - lineItemContentStartX - RIGHT_MARGIN;
+      const separators = [' ', '/', ':', '?', '&', '=', '-', '_', '.'];
+      const widthFn = (t) => romanFont.widthOfTextAtSize(t, 10);
+      for (let i = 0; i < videos.length; i++) {
+        const v = videos[i];
+        const text = `Video link ${i + 1}: ${v.url}`;
+        const lines = breakTextIntoLines(text, separators, maxWidth, widthFn);
+        for (const line of lines) {
+          if (pos.y < MINIMUM_SPACE_NEEDED + 12) {
+            currentPage = await checkAndCreateNewPage(doc, pos, currentPage, font);
+          }
+          currentPage.drawText(line, {
+            x: lineItemContentStartX,
+            y: pos.y,
+            size: 10,
+            font: romanFont,
+            color: rgb(0, 0, 1),
+            underline: true,
+            link: v.url,
+          });
+          pos.y -= 12;
+        }
+      }
+    }
     
     // Bottom separator with equal gap
     pos.y -= SEPARATOR_GAP;
