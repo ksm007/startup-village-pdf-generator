@@ -76,9 +76,9 @@ async function addPageTemplate(page, font, headerText) {
   return height - 120;
 }
 
-async function checkAndCreateNewPage(doc, pos, currentPage, font, headerText) {
+async function checkAndCreateNewPage(doc, pos, currentPage, font, headerText, forceNewPage = false) {
   const { height } = currentPage.getSize();
-  if (pos.y < MINIMUM_SPACE_NEEDED) {
+  if (forceNewPage || pos.y < MINIMUM_SPACE_NEEDED) {
     const newPage = doc.addPage();
     const timesRomanFont = await doc.embedFont(StandardFonts.TimesRoman);
     pos.y = await addPageTemplate(newPage, timesRomanFont, headerText);
@@ -91,7 +91,8 @@ async function checkAndCreateNewPage(doc, pos, currentPage, font, headerText) {
 // If not, add a new page and return the possibly updated currentPage.
 async function ensureSpace(doc, pos, currentPage, font, neededHeight, headerText) {
   if (pos.y - neededHeight < FOOTER_BUFFER) {
-    currentPage = await checkAndCreateNewPage(doc, pos, currentPage, font, headerText);
+    // Force a new page when the remaining space would intrude into the footer buffer
+    currentPage = await checkAndCreateNewPage(doc, pos, currentPage, font, headerText, true);
   }
   return currentPage;
 }

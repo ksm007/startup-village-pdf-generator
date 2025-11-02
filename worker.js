@@ -104,9 +104,9 @@ async function addPageTemplate(page, font) {
   return height - 120; // Return the starting Y position for content
 }
 
-async function checkAndCreateNewPage(doc, pos, currentPage, font) {
+async function checkAndCreateNewPage(doc, pos, currentPage, font, forceNewPage = false) {
   const { height } = currentPage.getSize();
-  if (pos.y < MINIMUM_SPACE_NEEDED) {
+  if (forceNewPage || pos.y < MINIMUM_SPACE_NEEDED) {
     const newPage = doc.addPage();
     const timesRomanFont = await doc.embedFont(StandardFonts.TimesRoman);
     
@@ -193,8 +193,8 @@ async function addCommentsToLineItem(comment, page, font, margin, pos, doc, comm
     const commentText = comment?.content || comment?.text || comment.commentText || "";
     
     // Make sure we have enough space for at least the label and first line
-    if (pos.y < MINIMUM_SPACE_NEEDED + 40) { // 40 pixels for label + first line
-        currentPage = await checkAndCreateNewPage(doc, pos, currentPage, font);
+  if (pos.y < MINIMUM_SPACE_NEEDED + 40) { // 40 pixels for label + first line
+    currentPage = await checkAndCreateNewPage(doc, pos, currentPage, font);
     }
     
   // Prepare geometry for bottom separator (single line after comment)
@@ -239,7 +239,7 @@ async function addCommentsToLineItem(comment, page, font, margin, pos, doc, comm
     // If not enough room for a reasonable image block, start on a fresh page
     const MIN_IMAGE_BLOCK = 260; 
     if (pos.y - MIN_IMAGE_BLOCK < FOOTER_BUFFER) {
-      currentPage = await checkAndCreateNewPage(doc, pos, currentPage, font);
+      currentPage = await checkAndCreateNewPage(doc, pos, currentPage, font, true);
     }
 
         for (const photo of comment.photos) {
@@ -276,7 +276,7 @@ async function addCommentsToLineItem(comment, page, font, margin, pos, doc, comm
             const scaleDown = (availVert - captionSpace - bottomBuffer) / height;
             if (scaleDown <= 0) {
               // not enough space on this page at all -> create new page
-              currentPage = await checkAndCreateNewPage(doc, pos, currentPage, font);
+              currentPage = await checkAndCreateNewPage(doc, pos, currentPage, font, true);
               availVert = pos.y - FOOTER_BUFFER;
             } else {
               height = Math.max(40, Math.floor(height * scaleDown));
@@ -286,7 +286,7 @@ async function addCommentsToLineItem(comment, page, font, margin, pos, doc, comm
 
           // If still not enough space, move to a new page
           if (pos.y - (height + captionSpace + bottomBuffer) < FOOTER_BUFFER) {
-            currentPage = await checkAndCreateNewPage(doc, pos, currentPage, font);
+            currentPage = await checkAndCreateNewPage(doc, pos, currentPage, font, true);
           }
 
           // Draw caption if present
@@ -303,7 +303,7 @@ async function addCommentsToLineItem(comment, page, font, margin, pos, doc, comm
 
           // Final ensure there is still space for the image, else add a page
           if (pos.y - (height + bottomBuffer) < FOOTER_BUFFER) {
-            currentPage = await checkAndCreateNewPage(doc, pos, currentPage, font);
+            currentPage = await checkAndCreateNewPage(doc, pos, currentPage, font, true);
           }
 
           // Draw the image
@@ -395,8 +395,8 @@ async function sectionPdfWorker(section) {
         ];
 
         // Check space for comments title
-        if (pos.y < MINIMUM_SPACE_NEEDED + 20) {
-            currentPage = await checkAndCreateNewPage(headerDoc, pos, currentPage, timesRomanFont);
+      if (pos.y < MINIMUM_SPACE_NEEDED + 20) {
+        currentPage = await checkAndCreateNewPage(headerDoc, pos, currentPage, timesRomanFont);
         }
         
         await addCommentsTitleToLineItem(lineItem, currentPage, timesRomanFont, margin, pos.y, headerDoc);
@@ -413,8 +413,8 @@ async function sectionPdfWorker(section) {
             const estimatedHeight = (estimatedLines * 12) + 20; // Reduced spacing
 
             // Create new page if needed
-            if (pos.y < (estimatedHeight + MINIMUM_SPACE_NEEDED)) {
-                currentPage = await checkAndCreateNewPage(headerDoc, pos, currentPage, timesRomanFont);
+      if (pos.y < (estimatedHeight + MINIMUM_SPACE_NEEDED)) {
+        currentPage = await checkAndCreateNewPage(headerDoc, pos, currentPage, timesRomanFont);
             }
             
             currentPage = await addCommentsToLineItem(comment, currentPage, timesRomanFont, margin, pos, headerDoc, commentIndex);
