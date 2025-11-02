@@ -5,7 +5,13 @@ const http = require('http');
 const https = require('https');
 
 const alpha = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
-const lineItemContentStartX = 180;
+// Move line items a bit to the left to reduce gap from checkboxes
+const lineItemContentStartX = 130;
+// Checkboxes config
+const CHECKBOX_SIZE = 14;               // slightly smaller boxes
+const CHECKBOX_COUNT = 4;               // I, NI, NP, D
+const CHECKBOX_MIN_SPACING = 6;         // tighten gaps between boxes
+const CHECKBOX_MAX_SPACING = 14;        // cap spacing so it doesn't spread too wide
 const MINIMUM_SPACE_NEEDED = 50;
 // Keep content above the footer (page number + TREC line). Increase if footer grows.
 const FOOTER_BUFFER = 100;
@@ -42,9 +48,16 @@ async function addPageTemplate(page, font) {
     x: margin, y: height - 95, width: width - margin * 2, height: 26,
     borderColor: rgb(0, 0, 0), borderWidth: 2, color: rgb(1, 1, 1),
   });
-  page.drawText('I    NI    NP    D', {
-    x: margin + 12, y: height - 95 + 7, size: 10, font, color: rgb(0, 0, 0),
-  });
+  // Draw keys above where checkboxes will be placed by computing matching Xs
+  const checkboxXs = getCheckboxXs(width, margin);
+  const labels = ['I','NI','NP','D'];
+  for (let i = 0; i < labels.length; i++) {
+    const label = labels[i];
+    // center label over box column
+    const labelWidth = font.widthOfTextAtSize(label, 10);
+    const centerX = checkboxXs[i] + CHECKBOX_SIZE / 2 - labelWidth / 2;
+    page.drawText(label, { x: centerX, y: height - 95 + 7, size: 10, font, color: rgb(0,0,0) });
+  }
   return height - 120;
 }
 
@@ -75,16 +88,27 @@ function addLineHeaderForLineItem(lineItem, page, font, margin, height, index) {
   });
 }
 
+function getCheckboxXs(pageWidth, margin) {
+  // Evenly distribute 4 boxes from left margin up to just before text column start
+  const available = Math.max(40, lineItemContentStartX - margin - 10);
+  // spacing so that total width = 4*size + 3*spacing <= available, then clamp to keep gaps small
+  let spacing = Math.floor((available - CHECKBOX_COUNT * CHECKBOX_SIZE) / (CHECKBOX_COUNT - 1));
+  spacing = Math.min(CHECKBOX_MAX_SPACING, Math.max(CHECKBOX_MIN_SPACING, spacing));
+  const xs = [];
+  for (let i = 0; i < CHECKBOX_COUNT; i++) xs.push(margin + i * (CHECKBOX_SIZE + spacing));
+  return xs;
+}
+
 function addCheckBoxToLineItem(lineItem, page, form, margin, y) {
   const checkboxTypes = ['I', 'NI', 'NP', 'D'];
-  const boxSize = 15, spacing = 40;
+  const xs = getCheckboxXs(page.getSize().width, margin);
   checkboxTypes.forEach((type, index) => {
     const checkBox = form.createCheckBox(`lineItem.${lineItem.id}.${type}`);
     let isChecked = false;
     if (lineItem.isDeficient && type === 'D') isChecked = true;
     else if (!lineItem.isDeficient && type === lineItem.inspectionStatus) isChecked = true;
     checkBox.addToPage(page, {
-      x: margin + (spacing * index), y, width: boxSize, height: boxSize,
+      x: xs[index], y, width: CHECKBOX_SIZE, height: CHECKBOX_SIZE,
       textColor: rgb(0, 0, 0), backgroundColor: rgb(1, 1, 1), borderColor: rgb(0, 0, 0), borderWidth: 1,
     });
     if (isChecked) checkBox.check();

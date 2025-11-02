@@ -38,8 +38,13 @@ function intToRoman(num) {
 
 const alpha = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
 
-const lineItemContentStartX=180;
+// Move line items a bit to the left to reduce gap from checkboxes
+const lineItemContentStartX=130;
 const MINIMUM_SPACE_NEEDED = 50; // Minimum space needed at bottom of page
+const CHECKBOX_SIZE = 14;
+const CHECKBOX_COUNT = 4;
+const CHECKBOX_MIN_SPACING = 6;
+const CHECKBOX_MAX_SPACING = 14;
 // Keep content well above the footer. Increase if footer layout changes.
 const FOOTER_BUFFER = 100;
 
@@ -84,17 +89,17 @@ async function addPageTemplate(page, font) {
     color: rgb(1, 1, 1),
   });
 
-  // Labels inside the box (left-aligned)
-  const keysText = 'I    NI    NP    D';
+  // Labels inside the box centered over checkbox columns
+  const keys = ['I','NI','NP','D'];
+  const xs = getCheckboxXs(width, margin);
   const keysSize = 10;
   const keysY = boxY + (boxHeight - keysSize) / 2 - 2;
-  page.drawText(keysText, {
-    x: boxX + 12,
-    y: keysY,
-    size: keysSize,
-    font: font,
-    color: rgb(0, 0, 0),
-  });
+  for (let i = 0; i < keys.length; i++) {
+    const label = keys[i];
+    const labelWidth = font.widthOfTextAtSize(label, keysSize);
+    const centerX = xs[i] + CHECKBOX_SIZE / 2 - labelWidth / 2;
+    page.drawText(label, { x: centerX, y: keysY, size: keysSize, font: font, color: rgb(0,0,0) });
+  }
 
   return height - 120; // Return the starting Y position for content
 }
@@ -125,37 +130,38 @@ function addLineHeaderForLineItem(lineItem, page, font, margin, height, index) {
   });
 }
 
+function getCheckboxXs(pageWidth, margin) {
+  const available = Math.max(40, lineItemContentStartX - margin - 10);
+  let spacing = Math.floor((available - CHECKBOX_COUNT * CHECKBOX_SIZE) / (CHECKBOX_COUNT - 1));
+  spacing = Math.min(CHECKBOX_MAX_SPACING, Math.max(CHECKBOX_MIN_SPACING, spacing));
+  const xs = [];
+  for (let i = 0; i < CHECKBOX_COUNT; i++) xs.push(margin + i * (CHECKBOX_SIZE + spacing));
+  return xs;
+}
+
 function addCheckBoxToLineItem(lineItem, page, form, margin, y) {
   const checkboxTypes = ['I', 'NI', 'NP', 'D'];
-  const boxSize = 15;
-  const spacing = 40; // Space between checkboxes
-  
+  const xs = getCheckboxXs(page.getSize().width, margin);
   checkboxTypes.forEach((type, index) => {
     const checkBox = form.createCheckBox(`lineItem.${lineItem.id}.${type}`);
-    
-    // Determine if this checkbox should be checked based on inspectionStatus and isDeficient
     let isChecked = false;
     if (lineItem.isDeficient && type === 'D') {
       isChecked = true;
     } else if (!lineItem.isDeficient && type === lineItem.inspectionStatus) {
       isChecked = true;
     }
-    
     checkBox.addToPage(page, {
-      x: margin + (spacing * index),
+      x: xs[index],
       y: y,
-      width: boxSize,
-      height: boxSize,
+      width: CHECKBOX_SIZE,
+      height: CHECKBOX_SIZE,
       textColor: rgb(0, 0, 0),
       backgroundColor: rgb(1, 1, 1),
       borderColor: rgb(0, 0, 0),
       borderWidth: 1,
     });
-
-    if (isChecked) {
-      checkBox.check();
-    }
- });
+    if (isChecked) checkBox.check();
+  });
 }
 
 
