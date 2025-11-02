@@ -15,7 +15,9 @@
     "express.js": "^1.0.0",
     "jimp": "^0.22.12",
     "node-fetch": "^3.3.2",
-    "pdf-lib": "^1.17.1"
+    "pdf-lib": "^1.17.1",
+    "sharp": "^0.34.4"
+
   },
   "devDependencies": {
     "@types/node": "^24.9.2",
