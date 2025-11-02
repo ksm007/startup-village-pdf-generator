@@ -62,6 +62,9 @@ node .\server.js
 
 # Option B: with nodemon (if installed)
 npm start
+
+#Run bonus by running
+node test-complete-report.js
 ```
 
 If the process exits with code 1, see Troubleshooting.
