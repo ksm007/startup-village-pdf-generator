@@ -496,42 +496,76 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
 
   // Draw background rectangle for section title
   const rectWidth = width - margin * 2;
+  const rectHeight = titleSize + titlePadding * 2;
+
   page.drawRectangle({
     x: margin,
     y: currentY - titleSize - titlePadding,
     width: rectWidth,
-    height: titleSize + titlePadding * 2,
+    height: rectHeight,
     color: rgb(0.95, 0.95, 0.95),
     borderColor: rgb(0.7, 0.7, 0.7),
     borderWidth: 0.5,
   });
 
-  // Draw centered text
+  // Draw centered text - vertically centered in the rectangle
+  const textY = currentY - titlePadding - titleSize / 2;
+
   page.drawText(sectionTitle, {
     x: titleX,
-    y: currentY - titlePadding / 2,
+    y: textY,
     size: titleSize,
     font: timesRomanBold,
     color: rgb(0.1, 0.1, 0.1),
   });
 
-  currentY -= titleSize + titlePadding * 2 + 20;
+  currentY -= rectHeight + 20;
 
   // Process line items
   for (const lineItem of section.lineItems || []) {
+    // Check if line item has any content to display
+    const hasSelectedOptions =
+      lineItem.selectedOptions && lineItem.selectedOptions.length > 0;
+    const hasComments =
+      lineItem.comments &&
+      lineItem.comments.length > 0 &&
+      lineItem.comments.some((comment) => {
+        const hasText = comment.text || comment.content || comment.commentText;
+        const hasLocation = comment.location && comment.location.trim() !== "";
+        const hasCommentOptions =
+          comment.selectedOptions && comment.selectedOptions.length > 0;
+        const hasPhotos = comment.photos && comment.photos.length > 0;
+        const hasVideos = comment.videos && comment.videos.length > 0;
+        const hasRecommendation =
+          comment.recommendation && comment.recommendation.trim() !== "";
+        return (
+          hasText ||
+          hasLocation ||
+          hasCommentOptions ||
+          hasPhotos ||
+          hasVideos ||
+          hasRecommendation
+        );
+      });
+
+    // Skip line item entirely if it has no content
+    if (!hasSelectedOptions && !hasComments) {
+      continue;
+    }
+
     // Check if we need a new page
     if (currentY < margin + 100) {
       currentY = await createNewPage();
     }
 
-    // Line item number and title (no checkboxes)
+    // Line item number and title (SUBHEADING - smaller than section title)
     const lineItemTitle = `${sanitizeText(lineItem.name || lineItem.title)}`;
 
-    // Add line item title with indentation
+    // Add line item title with indentation (SUBHEADING SIZE)
     page.drawText(lineItemTitle, {
       x: margin + 10,
       y: currentY,
-      size: fontSize + 2,
+      size: fontSize + 2, // Subheading: 14pt (section is 20pt)
       font: timesRomanBold,
       color: rgb(0.2, 0.2, 0.2),
     });
@@ -624,10 +658,10 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
           totalTagsWidth += tagWidth + tagSpacing;
         }
 
-        // Comment header - use label field with comment number beside it
+        // Comment header - use label field with comment number beside it (MAKE IT CAPS)
         const commentLabel = sanitizeText(
           comment.label || `Comment ${comment.commentNumber || ""}`
-        );
+        ).toUpperCase(); // Make comment header UPPERCASE
         const commentNumberText = comment.commentNumber
           ? ` ${comment.commentNumber}`
           : "";
@@ -658,6 +692,7 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
           if (i === 0 && tagsToDisplay.length > 0) {
             let currentTagX = width - margin - 15;
             const tagHeight = fontSize + tagPadding * 2;
+            const cornerRadius = 4; // Radius for rounded corners
 
             // Draw tags from right to left
             for (let j = tagsToDisplay.length - 1; j >= 0; j--) {
@@ -678,15 +713,56 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
                 tagPadding * 4;
 
               const tagX = currentTagX - tagWidth;
+              const tagY = currentY - tagPadding;
 
-              // Draw badge background
+              // Draw rounded rectangle for badge using multiple shapes
+              // Main rectangle (center)
               page.drawRectangle({
-                x: tagX,
-                y: currentY - tagPadding,
-                width: tagWidth,
+                x: tagX + cornerRadius,
+                y: tagY,
+                width: tagWidth - cornerRadius * 2,
                 height: tagHeight,
                 color: tagColor.bg,
-                borderColor: tagColor.bg,
+                borderWidth: 0,
+              });
+
+              // Top and bottom bars (horizontal)
+              page.drawRectangle({
+                x: tagX,
+                y: tagY + cornerRadius,
+                width: tagWidth,
+                height: tagHeight - cornerRadius * 2,
+                color: tagColor.bg,
+                borderWidth: 0,
+              });
+
+              // Draw 4 circles for rounded corners
+              page.drawCircle({
+                x: tagX + cornerRadius,
+                y: tagY + cornerRadius,
+                size: cornerRadius,
+                color: tagColor.bg,
+                borderWidth: 0,
+              });
+              page.drawCircle({
+                x: tagX + tagWidth - cornerRadius,
+                y: tagY + cornerRadius,
+                size: cornerRadius,
+                color: tagColor.bg,
+                borderWidth: 0,
+              });
+              page.drawCircle({
+                x: tagX + cornerRadius,
+                y: tagY + tagHeight - cornerRadius,
+                size: cornerRadius,
+                color: tagColor.bg,
+                borderWidth: 0,
+              });
+              page.drawCircle({
+                x: tagX + tagWidth - cornerRadius,
+                y: tagY + tagHeight - cornerRadius,
+                size: cornerRadius,
+                color: tagColor.bg,
                 borderWidth: 0,
               });
 
@@ -1295,7 +1371,22 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
           }
         }
 
-        currentY -= 5; // Extra space after comment
+        // Add horizontal line after each comment
+        currentY -= 5;
+
+        // Check if we need a new page for the line
+        if (currentY < margin + 20) {
+          currentY = await createNewPage();
+        }
+
+        page.drawLine({
+          start: { x: margin + 15, y: currentY },
+          end: { x: width - margin - 15, y: currentY },
+          thickness: 0.5,
+          color: rgb(0.8, 0.8, 0.8),
+        });
+
+        currentY -= 20; // Extra space after comment and line
       }
 
       currentY -= 10; // Extra space after all comments
