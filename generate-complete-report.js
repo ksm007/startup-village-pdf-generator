@@ -580,7 +580,7 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
 
   // Section title with background - CENTERED, BOLD, CAPS, BIGGER
   const sectionTitle = `${section.name}`.toUpperCase();
-  const titleSize = 20; // Increased from 16
+  const titleSize = 16; // Reduced from 20
   const titlePadding = 10;
 
   // Calculate centered position
@@ -1038,6 +1038,14 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
                 imgWidth = imgWidth * scale;
               }
 
+              // Check if image would overflow page - if so, create new page
+              const estimatedBottom = textStartY - imgHeight - 40; // Include caption space
+              if (estimatedBottom < margin + 30) {
+                currentY = await createNewPage();
+                textStartY = currentY;
+                textEndY = currentY;
+              }
+
               // Draw the image on the right side, aligned with text start
               const imageX = width - margin - imgWidth - 15;
               const imageY = textStartY; // Align with text top
@@ -1088,6 +1096,11 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
           }
           // For 2 images/videos: 2-column grid (enlarged)
           else if (totalMedia === 2) {
+            // Check if we need a new page before starting grid (need ~250px for images + captions)
+            if (currentY < margin + 280) {
+              currentY = await createNewPage();
+            }
+
             const gridSpacing = 15;
             const availableWidth = width - margin * 2 - 30;
             const imgBoxWidth = (availableWidth - gridSpacing) / 2;
@@ -1283,6 +1296,11 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
           }
           // For 3+ media items: 3-column grid (maximized width)
           else {
+            // Check if we need a new page before starting grid (need ~200px for images + captions)
+            if (currentY < margin + 220) {
+              currentY = await createNewPage();
+            }
+
             const gridSpacing = 10;
             const availableWidth = width - margin * 2 - 30;
             const imgBoxWidth = (availableWidth - gridSpacing * 2) / 3;
@@ -1351,12 +1369,12 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
 
                 maxRowHeight = Math.max(maxRowHeight, imgHeight);
 
-                // Check if we need a new page
-                if (currentY < imgHeight + 50) {
+                // Check if we need a new page (check against rowStartY for proper positioning)
+                if (rowStartY - imgHeight - 40 < margin + 30) {
                   currentY = await createNewPage();
                   rowStartY = currentY;
                   col = 0;
-                  maxRowHeight = 0;
+                  maxRowHeight = imgHeight; // Reset with current image height
                 }
 
                 // Position in grid
@@ -1605,19 +1623,23 @@ async function generateCompleteReport(
     for (let i = 0; i < sortedSections.length; i++) {
       const section = sortedSections[i];
 
-      // Track starting page number for this section (after cover page)
+      // Track starting page number for this section (BEFORE adding section content)
       const currentPageCount = pdfDoc.getPageCount();
       const sectionNum = section.sectionNumber || (i + 1).toString();
-      sectionPageMap[sectionNum] = currentPageCount + 2; // +2 because TOC will be inserted at position 2
+      // Store the actual current page count + 2 (cover + TOC that will be inserted)
+      const actualStartPage = currentPageCount + 2;
+      sectionPageMap[sectionNum] = actualStartPage;
 
       console.log(
-        `   [${i + 1}/${sortedSections.length}] Processing: ${section.name}`
+        `   [${i + 1}/${sortedSections.length}] Processing: ${
+          section.name
+        } (starts at page ${actualStartPage})`
       );
 
       await generateSectionPage(pdfDoc, section, {
         ...options,
         reportId,
-        pageNumber: sectionPageMap[sectionNum],
+        pageNumber: actualStartPage,
       });
 
       console.log(`   ✅ Section completed\n`);
@@ -1692,11 +1714,15 @@ async function generateCompleteReport(
         });
 
         // Add clickable link annotation
-        // After TOC insertion at index 1, actual page index = pageNumber - 1
-        const targetPageIndex = pageNumber - 1; // pageNumber is 1-based, includes cover + TOC
+        // pageNumber is 1-based (includes cover + TOC), so subtract 1 for 0-based index
+        const targetPageIndex = pageNumber - 1;
 
         if (targetPageIndex >= 0 && targetPageIndex < allPages.length) {
           const targetPage = allPages[targetPageIndex];
+
+          console.log(
+            `   📌 Linking "${section.name}" to page ${pageNumber} (index ${targetPageIndex})`
+          );
 
           // Create link annotation with proper structure
           const linkAnnot = pdfDoc.context.register(
@@ -1761,7 +1787,11 @@ async function generateCompleteReport(
     // Save the PDF
     console.log("💾 Step 4: Saving PDF...");
     const pdfBytes = await pdfDoc.save();
-    fs.writeFileSync(outputPath, pdfBytes);
+
+    // Only write to file if outputPath is provided (not null)
+    if (outputPath) {
+      fs.writeFileSync(outputPath, pdfBytes);
+    }
 
     const fileSizeKB = (pdfBytes.length / 1024).toFixed(2);
     const pageCount = pdfDoc.getPageCount();
@@ -1769,7 +1799,9 @@ async function generateCompleteReport(
     console.log(`   ✅ PDF saved successfully!`);
     console.log(`   📄 Pages: ${pageCount}`);
     console.log(`   📦 Size: ${fileSizeKB} KB`);
-    console.log(`   📁 Location: ${outputPath}`);
+    if (outputPath) {
+      console.log(`   📁 Location: ${outputPath}`);
+    }
 
     console.log("\n" + "=".repeat(70));
     console.log("✨ Report Generation Complete!");
