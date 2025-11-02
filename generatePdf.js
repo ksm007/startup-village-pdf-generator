@@ -60,8 +60,11 @@ async function addPageTemplate(page, font, headerText) {
   page.drawText('I=Inspected    NI=Not Inspected    NP=Not Present    D=Deficient', {
     x: margin, y: height - 60, size: 11, font, color: rgb(0, 0, 0),
   });
+  // Slimmer legend box height
+  const boxY = height - 95;
+  const boxHeight = 18;
   page.drawRectangle({
-    x: margin, y: height - 95, width: width - margin * 2, height: 26,
+    x: margin, y: boxY, width: width - margin * 2, height: boxHeight,
     borderColor: rgb(0, 0, 0), borderWidth: 2, color: rgb(1, 1, 1),
   });
   // Draw keys above where checkboxes will be placed by computing matching Xs
@@ -72,7 +75,9 @@ async function addPageTemplate(page, font, headerText) {
     // center label over box column
     const labelWidth = font.widthOfTextAtSize(label, 10);
     const centerX = checkboxXs[i] + CHECKBOX_SIZE / 2 - labelWidth / 2;
-    page.drawText(label, { x: centerX, y: height - 95 + 7, size: 10, font, color: rgb(0,0,0) });
+    // Vertically balance baseline so top/bottom padding look equal
+    const keysY = boxY + Math.round((boxHeight - 10) / 2) + 1;
+    page.drawText(label, { x: centerX, y: keysY, size: 10, font, color: rgb(0,0,0) });
   }
   return height - 120;
 }

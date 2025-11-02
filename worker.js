@@ -77,7 +77,7 @@ async function addPageTemplate(page, font) {
   // Large bordered box with I NI NP D labels inside
   const boxX = margin;
   const boxWidth = width - margin * 2;
-  const boxHeight = 26;
+  const boxHeight = 18;
   const boxY = height - 95;
   page.drawRectangle({
     x: boxX,
@@ -93,7 +93,8 @@ async function addPageTemplate(page, font) {
   const keys = ['I','NI','NP','D'];
   const xs = getCheckboxXs(width, margin);
   const keysSize = 10;
-  const keysY = boxY + (boxHeight - keysSize) / 2 - 2;
+  // Vertically balance baseline so top/bottom padding look equal
+  const keysY = boxY + Math.round((boxHeight - keysSize) / 2) + 1;
   for (let i = 0; i < keys.length; i++) {
     const label = keys[i];
     const labelWidth = font.widthOfTextAtSize(label, keysSize);
