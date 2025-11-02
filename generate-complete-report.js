@@ -70,33 +70,39 @@ function downloadImage(url) {
     }, 5000); // Reduced to 5 second timeout for faster failure
 
     const request = protocol
-      .get(url, { 
-        timeout: 5000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0' // Some servers require a user agent
-        }
-      }, (response) => {
-        clearTimeout(timeout);
-        
-        if (response.statusCode !== 200) {
-          reject(new Error(`Failed to download image: ${response.statusCode}`));
-          return;
-        }
+      .get(
+        url,
+        {
+          timeout: 5000,
+          headers: {
+            "User-Agent": "Mozilla/5.0", // Some servers require a user agent
+          },
+        },
+        (response) => {
+          clearTimeout(timeout);
 
-        const chunks = [];
-        response.on("data", (chunk) => chunks.push(chunk));
-        response.on("end", () => {
-          const buffer = Buffer.concat(chunks);
-          imageCache.set(url, buffer); // Cache the result
-          resolve(buffer);
-        });
-        response.on("error", reject);
-      })
+          if (response.statusCode !== 200) {
+            reject(
+              new Error(`Failed to download image: ${response.statusCode}`)
+            );
+            return;
+          }
+
+          const chunks = [];
+          response.on("data", (chunk) => chunks.push(chunk));
+          response.on("end", () => {
+            const buffer = Buffer.concat(chunks);
+            imageCache.set(url, buffer); // Cache the result
+            resolve(buffer);
+          });
+          response.on("error", reject);
+        }
+      )
       .on("error", (err) => {
         clearTimeout(timeout);
         reject(err);
       });
-    
+
     request.on("timeout", () => {
       request.destroy();
       reject(new Error("Request timeout"));
@@ -107,15 +113,16 @@ function downloadImage(url) {
 // Pre-download all images in parallel
 async function preloadAllImages(inspectionData) {
   const imageUrls = new Set();
-  
+
   // Collect cover image
   const inspection = inspectionData?.inspection || inspectionData;
   if (inspection.headerImageUrl) {
     imageUrls.add(inspection.headerImageUrl);
   }
-  
+
   // Collect all comment images
-  const sections = inspectionData?.inspection?.sections || inspectionData?.sections || [];
+  const sections =
+    inspectionData?.inspection?.sections || inspectionData?.sections || [];
   for (const section of sections) {
     for (const lineItem of section.lineItems || []) {
       for (const comment of lineItem.comments || []) {
@@ -130,13 +137,13 @@ async function preloadAllImages(inspectionData) {
       }
     }
   }
-  
+
   // Download all images in parallel with maximum concurrency
   const urls = Array.from(imageUrls);
-  
+
   // Download all at once for maximum speed
-  await Promise.allSettled(urls.map(url => downloadImage(url)));
-  
+  await Promise.allSettled(urls.map((url) => downloadImage(url)));
+
   return imageUrls.size;
 }
 
@@ -1252,7 +1259,7 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
 
                 if (isVideo) {
                   // Create video placeholder
-                  
+
                   const placeholderHeight = 150; // Standard height for 3-grid
                   const placeholderWidth = imgBoxWidth; // Match box width
 
