@@ -35,10 +35,25 @@ function intToRoman(num) {
   return res;
 }
 
-async function addPageTemplate(page, font) {
+function formatDate(ms) {
+  try {
+    if (!ms) return '';
+    const d = new Date(ms);
+    if (isNaN(d.getTime())) return '';
+    // Format as MM/DD/YYYY
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${mm}/${dd}/${yyyy}`;
+  } catch {
+    return '';
+  }
+}
+
+async function addPageTemplate(page, font, headerText) {
   const { width, height } = page.getSize();
   const margin = 20;
-  page.drawText('Report Identification: 1234 Main Street Denton Texas 76201 - 09/30/2021', {
+  page.drawText(headerText || 'Report Identification', {
     x: margin, y: height - 40, size: 12, font, color: rgb(0, 0, 0),
   });
   page.drawText('I=Inspected    NI=Not Inspected    NP=Not Present    D=Deficient', {
@@ -61,12 +76,12 @@ async function addPageTemplate(page, font) {
   return height - 120;
 }
 
-async function checkAndCreateNewPage(doc, pos, currentPage, font) {
+async function checkAndCreateNewPage(doc, pos, currentPage, font, headerText) {
   const { height } = currentPage.getSize();
   if (pos.y < MINIMUM_SPACE_NEEDED) {
     const newPage = doc.addPage();
     const timesRomanFont = await doc.embedFont(StandardFonts.TimesRoman);
-    pos.y = await addPageTemplate(newPage, timesRomanFont);
+    pos.y = await addPageTemplate(newPage, timesRomanFont, headerText);
     return newPage;
   }
   return currentPage;
@@ -74,9 +89,9 @@ async function checkAndCreateNewPage(doc, pos, currentPage, font) {
 
 // Ensure there's enough vertical space left on the page for a block of content.
 // If not, add a new page and return the possibly updated currentPage.
-async function ensureSpace(doc, pos, currentPage, font, neededHeight) {
+async function ensureSpace(doc, pos, currentPage, font, neededHeight, headerText) {
   if (pos.y - neededHeight < FOOTER_BUFFER) {
-    currentPage = await checkAndCreateNewPage(doc, pos, currentPage, font);
+    currentPage = await checkAndCreateNewPage(doc, pos, currentPage, font, headerText);
   }
   return currentPage;
 }
@@ -122,7 +137,7 @@ async function addCommentsTitleToLineItem(lineItem, page, font, margin, height, 
   });
 }
 
-async function addCommentsToLineItem(comment, page, font, margin, pos, doc, commentIndex) {
+async function addCommentsToLineItem(comment, page, font, margin, pos, doc, commentIndex, headerText) {
   let currentPage = page;
   const romanFont = await doc.embedFont(StandardFonts.TimesRoman);
   const boldFont = await doc.embedFont(StandardFonts.TimesRomanBold);
@@ -133,7 +148,7 @@ async function addCommentsToLineItem(comment, page, font, margin, pos, doc, comm
     const widthFn = t => useFont.widthOfTextAtSize(t, size);
     const lines = breakTextIntoLines(text, [' '], maxWidth, widthFn);
     for (const line of lines) {
-      currentPage = await ensureSpace(doc, pos, currentPage, font, lineH);
+      currentPage = await ensureSpace(doc, pos, currentPage, font, lineH, headerText);
       currentPage.drawText(line, { x, y: pos.y, size, font: useFont, color: rgb(0,0,0) });
       pos.y -= lineH;
     }
@@ -142,7 +157,7 @@ async function addCommentsToLineItem(comment, page, font, margin, pos, doc, comm
 
   const labelText = `${commentIndex + 1}. ${comment?.label || ''}`;
   // Space for label
-  currentPage = await ensureSpace(doc, pos, currentPage, font, 12);
+  currentPage = await ensureSpace(doc, pos, currentPage, font, 12, headerText);
   currentPage.drawText(labelText, { x: lineItemContentStartX, y: pos.y, size: 10, font: boldFont, color: rgb(0,0,0) });
   pos.y -= 12;
 
@@ -183,10 +198,10 @@ async function addCommentsToLineItem(comment, page, font, margin, pos, doc, comm
           };
         });
         const captionH = scaled.some(it => it.caption) ? 12 : 0; // simple one-line caption per image
-        const rowHeight = Math.max(...scaled.map(it => it.h)) + captionH;
+  const rowHeight = Math.max(...scaled.map(it => it.h)) + captionH;
 
         // Ensure there's space for this whole row; if not, start new page
-        currentPage = await ensureSpace(doc, pos, currentPage, font, rowHeight + rowSpacing);
+  currentPage = await ensureSpace(doc, pos, currentPage, font, rowHeight + rowSpacing, headerText);
 
         // Draw the row
         for (let c = 0; c < scaled.length; c++) {
@@ -241,18 +256,25 @@ async function fetchAndEmbedImage(url, doc) {
 }
 
 async function createPdf(req, res) {
-  const sections = req?.body?.inspection?.sections || [];
+  const inspection = req?.body?.inspection || {};
+  const sections = inspection?.sections || [];
+  // Build dynamic header: address + date
+  const addr = inspection?.address || {};
+  const fullAddr = addr.fullAddress || [addr.street, addr.city, addr.state, addr.zipcode].filter(Boolean).join(', ').replace(/,\s*,/g, ',').replace(/,\s*$/, '');
+  const dateMs = inspection?.schedule?.date || inspection?.bookingFormData?.schedule?.date;
+  const dateStr = formatDate(dateMs);
+  const headerText = fullAddr || dateStr ? `Report Identification: ${fullAddr}${fullAddr && dateStr ? ' - ' : ''}${dateStr}` : 'Report Identification';
   const pdfDoc = await PDFDocument.create();
   const timesRomanFont = await pdfDoc.embedFont(StandardFonts.TimesRoman);
   const form = pdfDoc.getForm();
   let page = pdfDoc.addPage();
   let { width, height } = page.getSize();
-  let pos = { y: await addPageTemplate(page, timesRomanFont) };
+  let pos = { y: await addPageTemplate(page, timesRomanFont, headerText) };
   let currentPage = page;
   const margin = 20;
   for (const [sectionIdx, section] of sections.entries()) {
     // Ensure space for section header
-    currentPage = await ensureSpace(pdfDoc, pos, currentPage, timesRomanFont, 40);
+    currentPage = await ensureSpace(pdfDoc, pos, currentPage, timesRomanFont, 40, headerText);
     currentPage.drawText(intToRoman(sectionIdx + 1) + ' ' + section.name, {
       x: width / 2 - timesRomanFont.widthOfTextAtSize(section.name, 12) / 2,
       y: pos.y, size: 12, font: timesRomanFont, color: rgb(0, 0, 0),
@@ -260,12 +282,12 @@ async function createPdf(req, res) {
     pos.y -= 30;
     for (const [index, lineItem] of (section.lineItems || []).entries()) {
       // Ensure space for line-item header + checkboxes
-      currentPage = await ensureSpace(pdfDoc, pos, currentPage, timesRomanFont, 70);
+      currentPage = await ensureSpace(pdfDoc, pos, currentPage, timesRomanFont, 70, headerText);
       addCheckBoxToLineItem(lineItem, currentPage, form, margin, pos.y);
       addLineHeaderForLineItem(lineItem, currentPage, timesRomanFont, margin, pos.y + 7, index);
       pos.y -= 5;
       // Ensure space for Comments: label
-      currentPage = await ensureSpace(pdfDoc, pos, currentPage, timesRomanFont, 20);
+      currentPage = await ensureSpace(pdfDoc, pos, currentPage, timesRomanFont, 20, headerText);
       await addCommentsTitleToLineItem(lineItem, currentPage, timesRomanFont, margin, pos.y, pdfDoc);
       pos.y -= 12;
       const defaultComments = [
@@ -277,8 +299,8 @@ async function createPdf(req, res) {
         const commentText = comment?.content || comment?.text || comment.commentText || '';
         const estimatedLines = Math.ceil(commentText.length / 60);
         const estimatedHeight = (estimatedLines * 12) + 20;
-        currentPage = await ensureSpace(pdfDoc, pos, currentPage, timesRomanFont, Math.max(estimatedHeight, 40));
-        currentPage = await addCommentsToLineItem(comment, currentPage, timesRomanFont, margin, pos, pdfDoc, commentIndex);
+        currentPage = await ensureSpace(pdfDoc, pos, currentPage, timesRomanFont, Math.max(estimatedHeight, 40), headerText);
+        currentPage = await addCommentsToLineItem(comment, currentPage, timesRomanFont, margin, pos, pdfDoc, commentIndex, headerText);
       }
       pos.y -= 15;
     }
