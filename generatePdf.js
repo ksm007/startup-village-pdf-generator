@@ -298,8 +298,8 @@ async function createPdf(req, res) {
       addCheckBoxToLineItem(lineItem, currentPage, form, margin, pos.y);
       addLineHeaderForLineItem(lineItem, currentPage, timesRomanFont, margin, pos.y + 7, index);
       pos.y -= 5;
-      // Ensure space for Comments: label
-      currentPage = await ensureSpace(pdfDoc, pos, currentPage, timesRomanFont, 20, headerText);
+  // Ensure space for Comments: label plus at least one line to avoid orphaning the label at page bottom
+  currentPage = await ensureSpace(pdfDoc, pos, currentPage, timesRomanFont, 32, headerText);
       await addCommentsTitleToLineItem(lineItem, currentPage, timesRomanFont, margin, pos.y, pdfDoc);
       pos.y -= 12;
       const defaultComments = [
@@ -308,13 +308,15 @@ async function createPdf(req, res) {
       ];
       const commentsToUse = lineItem?.comments?.length > 0 ? lineItem.comments : defaultComments;
       for (const [commentIndex, comment] of commentsToUse.entries()) {
-        const commentText = comment?.content || comment?.text || comment.commentText || '';
-        const estimatedLines = Math.ceil(commentText.length / 60);
-        const estimatedHeight = (estimatedLines * 12) + 20;
-        currentPage = await ensureSpace(pdfDoc, pos, currentPage, timesRomanFont, Math.max(estimatedHeight, 40), headerText);
+        // Let the renderer handle pagination line-by-line for text-only comments to avoid large whitespace.
+        // We don't force-fit the entire comment block; we only ensure per-line inside the renderer.
         currentPage = await addCommentsToLineItem(comment, currentPage, timesRomanFont, margin, pos, pdfDoc, commentIndex, headerText);
+        // Reduce extra whitespace for text-only comments; keep a small gap for image comments
+        const hasPhotos = Array.isArray(comment?.photos) && comment.photos.length > 0;
+        pos.y -= hasPhotos ? 10 : 0;
       }
-      pos.y -= 15;
+      // Keep a modest gap between line items
+      pos.y -= 10;
     }
     pos.y -= 20;
   }

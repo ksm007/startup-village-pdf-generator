@@ -394,8 +394,8 @@ async function sectionPdfWorker(section) {
             }
         ];
 
-        // Check space for comments title
-      if (pos.y < MINIMUM_SPACE_NEEDED + 20) {
+    // Check space for comments title and at least one line to avoid orphaning label
+    if (pos.y < MINIMUM_SPACE_NEEDED + 32) {
         currentPage = await checkAndCreateNewPage(headerDoc, pos, currentPage, timesRomanFont);
         }
         
@@ -407,16 +407,7 @@ async function sectionPdfWorker(section) {
 
         // Process comments (either actual or default)
         for(const [commentIndex, comment] of commentsToUse.entries()){
-            // Estimate space needed for this comment
-            const commentText = comment?.content || comment?.text || comment.commentText || "";
-            const estimatedLines = Math.ceil(commentText.length / 60); // More conservative estimate
-            const estimatedHeight = (estimatedLines * 12) + 20; // Reduced spacing
-
-            // Create new page if needed
-      if (pos.y < (estimatedHeight + MINIMUM_SPACE_NEEDED)) {
-        currentPage = await checkAndCreateNewPage(headerDoc, pos, currentPage, timesRomanFont);
-            }
-            
+      // For text-only comments, don't pre-break the entire comment; let the renderer handle per-line pagination.
             currentPage = await addCommentsToLineItem(comment, currentPage, timesRomanFont, margin, pos, headerDoc, commentIndex);
         }
         
@@ -505,13 +496,6 @@ async function generateInspectionPdf() {
       const commentsToUse = lineItem?.comments?.length > 0 ? lineItem.comments : defaultComments;
 
       for (const [commentIndex, comment] of commentsToUse.entries()) {
-        // Estimate space needed for this comment
-        const commentText = comment?.content || comment?.text || comment.commentText || "";
-        const estimatedLines = Math.ceil(commentText.length / 60);
-        const estimatedHeight = (estimatedLines * 12) + 20;
-        if (pos.y < (estimatedHeight + MINIMUM_SPACE_NEEDED)) {
-          currentPage = await checkAndCreateNewPage(pdfDoc, pos, currentPage, timesRomanFont);
-        }
         currentPage = await addCommentsToLineItem(comment, currentPage, timesRomanFont, margin, pos, pdfDoc, commentIndex);
       }
       pos.y -= 15;
