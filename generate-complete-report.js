@@ -634,8 +634,7 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
         const fullCommentHeader = commentNumberText + " " + commentLabel;
 
         // Calculate maximum width for header text (leave space for tags)
-        const headerMaxWidth =
-          width - margin * 2 - 30 - totalTagsWidth - 20; // 20px buffer
+        const headerMaxWidth = width - margin * 2 - 30 - totalTagsWidth - 20; // 20px buffer
 
         // Wrap header if it's too long
         const headerLines = wrapText(
