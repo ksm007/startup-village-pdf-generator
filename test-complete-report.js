@@ -14,7 +14,7 @@ const fs = require("fs");
 
 async function testCompleteReport() {
   const inputFile = path.join(__dirname, "inspection.json");
-  const outputFile = path.join(__dirname, "complete-inspection-report.pdf");
+  const outputFile = path.join(__dirname, "bonus.pdf");
 
   // Parse command line options
   const args = process.argv.slice(2);
@@ -56,7 +56,7 @@ async function testCompleteReport() {
 
     console.log("\n" + "━".repeat(70));
     console.log("✅ Test completed successfully!");
-    console.log("💡 Open complete-inspection-report.pdf to view the result.");
+    console.log("💡 Open bonus.pdf to view the result.");
     console.log("━".repeat(70) + "\n");
   } catch (error) {
     console.error("\n❌ Test failed:", error.message);

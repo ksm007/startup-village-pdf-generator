@@ -53,25 +53,98 @@ function wrapText(text, font, fontSize, maxWidth) {
   return lines;
 }
 
-// Download image from URL
+// Download image from URL with caching
+const imageCache = new Map();
+
 function downloadImage(url) {
+  // Return cached image if available
+  if (imageCache.has(url)) {
+    return Promise.resolve(imageCache.get(url));
+  }
+
   return new Promise((resolve, reject) => {
     const protocol = url.startsWith("https") ? https : http;
 
-    protocol
-      .get(url, (response) => {
-        if (response.statusCode !== 200) {
-          reject(new Error(`Failed to download image: ${response.statusCode}`));
-          return;
-        }
+    const timeout = setTimeout(() => {
+      reject(new Error("Download timeout"));
+    }, 5000); // Reduced to 5 second timeout for faster failure
 
-        const chunks = [];
-        response.on("data", (chunk) => chunks.push(chunk));
-        response.on("end", () => resolve(Buffer.concat(chunks)));
-        response.on("error", reject);
-      })
-      .on("error", reject);
+    const request = protocol
+      .get(
+        url,
+        {
+          timeout: 5000,
+          headers: {
+            "User-Agent": "Mozilla/5.0", // Some servers require a user agent
+          },
+        },
+        (response) => {
+          clearTimeout(timeout);
+
+          if (response.statusCode !== 200) {
+            reject(
+              new Error(`Failed to download image: ${response.statusCode}`)
+            );
+            return;
+          }
+
+          const chunks = [];
+          response.on("data", (chunk) => chunks.push(chunk));
+          response.on("end", () => {
+            const buffer = Buffer.concat(chunks);
+            imageCache.set(url, buffer); // Cache the result
+            resolve(buffer);
+          });
+          response.on("error", reject);
+        }
+      )
+      .on("error", (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+
+    request.on("timeout", () => {
+      request.destroy();
+      reject(new Error("Request timeout"));
+    });
   });
+}
+
+// Pre-download all images in parallel
+async function preloadAllImages(inspectionData) {
+  const imageUrls = new Set();
+
+  // Collect cover image
+  const inspection = inspectionData?.inspection || inspectionData;
+  if (inspection.headerImageUrl) {
+    imageUrls.add(inspection.headerImageUrl);
+  }
+
+  // Collect all comment images
+  const sections =
+    inspectionData?.inspection?.sections || inspectionData?.sections || [];
+  for (const section of sections) {
+    for (const lineItem of section.lineItems || []) {
+      for (const comment of lineItem.comments || []) {
+        // Add photos
+        if (comment.photos && comment.photos.length > 0) {
+          for (const photo of comment.photos) {
+            if (photo.url) {
+              imageUrls.add(photo.url);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Download all images in parallel with maximum concurrency
+  const urls = Array.from(imageUrls);
+
+  // Download all at once for maximum speed
+  await Promise.allSettled(urls.map((url) => downloadImage(url)));
+
+  return imageUrls.size;
 }
 
 // Create a video placeholder (blue rectangle with play icon text)
@@ -133,7 +206,6 @@ async function createCoverPage(pdfDoc, inspectionData, options = {}) {
 
   if (inspection.headerImageUrl) {
     try {
-      console.log("  📸 Downloading cover image...");
       const imageBytes = await downloadImage(inspection.headerImageUrl);
 
       let image;
@@ -916,9 +988,6 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
           if (totalMedia === 1 && numPhotos === 1) {
             try {
               const photo = comment.photos[0];
-              console.log(
-                `  📸 Downloading image for comment ${comment.commentNumber}...`
-              );
               const imageBytes = await downloadImage(photo.url);
 
               let image;
@@ -1010,11 +1079,6 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
 
                 if (isVideo) {
                   // Create video placeholder with standard size
-                  console.log(
-                    `  🎥 Creating video placeholder ${i + 1}/2 for comment ${
-                      comment.commentNumber
-                    }...`
-                  );
                   const videoWidth = 320;
                   const videoHeight = 240;
                   await createVideoPlaceholder(pdfDoc, videoWidth, videoHeight);
@@ -1026,11 +1090,6 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
                   imgWidth = placeholderWidth;
                   imgHeight = placeholderHeight;
                 } else {
-                  console.log(
-                    `  📸 Downloading image ${i + 1}/2 for comment ${
-                      comment.commentNumber
-                    }...`
-                  );
                   const imageBytes = await downloadImage(mediaItem.data.url);
 
                   if (mediaItem.data.url.toLowerCase().includes(".png")) {
@@ -1200,11 +1259,6 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
 
                 if (isVideo) {
                   // Create video placeholder
-                  console.log(
-                    `  🎥 Creating video placeholder ${i + 1}/${
-                      mediaItems.length
-                    } for comment ${comment.commentNumber}...`
-                  );
 
                   const placeholderHeight = 150; // Standard height for 3-grid
                   const placeholderWidth = imgBoxWidth; // Match box width
@@ -1212,11 +1266,6 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
                   imgWidth = placeholderWidth;
                   imgHeight = placeholderHeight;
                 } else {
-                  console.log(
-                    `  📸 Downloading image ${i + 1}/${
-                      mediaItems.length
-                    } for comment ${comment.commentNumber}...`
-                  );
                   const imageBytes = await downloadImage(mediaItem.data.url);
 
                   if (mediaItem.data.url.toLowerCase().includes(".png")) {
@@ -1453,6 +1502,15 @@ async function generateCompleteReport(
 
     console.log(`📊 Processing ${sections.length} sections...\n`);
 
+    // Pre-load all images in parallel for massive speed improvement
+    if (includeImages) {
+      console.log("🚀 Pre-loading all images in parallel...");
+      const startTime = Date.now();
+      const imageCount = await preloadAllImages(inspectionData);
+      const loadTime = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.log(`   ✅ Loaded ${imageCount} unique images in ${loadTime}s\n`);
+    }
+
     const pdfDoc = await PDFDocument.create();
 
     // Set document metadata
@@ -1483,30 +1541,6 @@ async function generateCompleteReport(
       console.log(
         `   [${i + 1}/${sortedSections.length}] Processing: ${section.name}`
       );
-      console.log(`      Starting at page: ${sectionPageMap[sectionNum]}`);
-      console.log(`      Line Items: ${section.lineItems?.length || 0}`);
-
-      const commentsCount =
-        section.lineItems?.reduce(
-          (sum, item) => sum + (item.comments?.length || 0),
-          0
-        ) || 0;
-      console.log(`      Comments: ${commentsCount}`);
-
-      const imagesCount =
-        section.lineItems?.reduce(
-          (sum, item) =>
-            sum +
-            item.comments?.reduce(
-              (cSum, comment) => cSum + (comment.photos?.length || 0),
-              0
-            ),
-          0
-        ) || 0;
-
-      if (includeImages && imagesCount > 0) {
-        console.log(`      Images: ${imagesCount}`);
-      }
 
       await generateSectionPage(pdfDoc, section, {
         ...options,
