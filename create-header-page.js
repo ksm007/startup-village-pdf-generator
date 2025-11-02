@@ -193,8 +193,8 @@ const checkAndAddNewPage = (pdfDoc, cursorY, font, boldFont, italicFont) => {
     const middleX = boxX + boxWidth / 2;
     // drawLine(page, middleX, boxY, middleX, boxY + boxHeight, 2, BLACK);
 
-    // Get data from JSON
-    const clientName = inspection.clientInfo?.name || "";
+    // Get data from JSON with dummy data fallback
+    const clientName = inspection.clientInfo?.name || "[Dummy Client Name]";
     const inspectionDate = inspection.schedule?.date
       ? new Date(inspection.schedule.date).toLocaleDateString("en-US", {
           month: "2-digit",
@@ -204,24 +204,30 @@ const checkAndAddNewPage = (pdfDoc, cursorY, font, boldFont, italicFont) => {
           minute: "2-digit",
           hour12: true,
         })
-      : "";
-    const propertyAddress = inspection.address?.fullAddress || "";
-    const inspectorName = inspection.inspector?.name || account.name || "";
+      : "[Dummy Date - 01/01/2025, 9:00 AM]";
+    const propertyAddress =
+      inspection.address?.fullAddress ||
+      "[Dummy Address - 123 Main St, City, ST 12345]";
+    const inspectorName =
+      inspection.inspector?.name || account.name || "[Dummy Inspector Name]";
     const inspectorLicense =
-      inspection.inspector?.license || inspection.inspector?.id || "";
-    const sponsorName = account.companyName || "";
-    const sponsorLicense = account.id || "";
+      inspection.inspector?.license ||
+      inspection.inspector?.id ||
+      "[Dummy License #12345]";
+    const sponsorName = account.companyName || "[Dummy Company Name]";
+    const sponsorLicense = account.id || "[Dummy Sponsor License #67890]";
 
     // Left column fields
     let fieldY = boxY + boxHeight - 30;
     const leftFieldX = boxX + 10;
     const leftValueX = boxX + 10;
     const leftLabelSize = 9;
+    const headerFontSize = 9;
     const leftValueSize = 11;
     const fieldSpacing = 25;
 
     // Field 1: Buyer Name
-    drawText(page, clientName, leftValueX, fieldY, leftValueSize, font);
+    drawText(page, clientName, leftValueX, fieldY, headerFontSize, font);
     drawLine(
       page,
       leftFieldX,
@@ -235,7 +241,7 @@ const checkAndAddNewPage = (pdfDoc, cursorY, font, boldFont, italicFont) => {
     fieldY -= fieldSpacing;
 
     // Field 2: Property Address
-    drawText(page, propertyAddress, leftValueX, fieldY, leftValueSize, font);
+    drawText(page, propertyAddress, leftValueX, fieldY, headerFontSize, font);
     drawLine(
       page,
       leftFieldX,
@@ -256,7 +262,7 @@ const checkAndAddNewPage = (pdfDoc, cursorY, font, boldFont, italicFont) => {
     fieldY -= fieldSpacing;
 
     // Field 3: Inspector Name
-    drawText(page, inspectorName, leftValueX, fieldY, leftValueSize, font);
+    drawText(page, inspectorName, leftValueX, fieldY, headerFontSize, font);
     drawLine(
       page,
       leftFieldX,
@@ -270,7 +276,7 @@ const checkAndAddNewPage = (pdfDoc, cursorY, font, boldFont, italicFont) => {
     fieldY -= fieldSpacing;
 
     // Field 4: Sponsor Name
-    drawText(page, sponsorName, leftValueX, fieldY, leftValueSize, font);
+    drawText(page, sponsorName, leftValueX, fieldY, headerFontSize, font);
     drawLine(
       page,
       leftFieldX,
@@ -295,7 +301,7 @@ const checkAndAddNewPage = (pdfDoc, cursorY, font, boldFont, italicFont) => {
     const rightValueX = middleX + 10;
 
     // Field 1: Inspection Date
-    drawText(page, inspectionDate, rightValueX, fieldY, leftValueSize, font);
+    drawText(page, inspectionDate, rightValueX, fieldY, headerFontSize, font);
     drawLine(
       page,
       rightFieldX,
@@ -324,7 +330,7 @@ const checkAndAddNewPage = (pdfDoc, cursorY, font, boldFont, italicFont) => {
       `TREC license # ${inspectorLicense}`,
       rightValueX,
       fieldY,
-      leftValueSize,
+      headerFontSize,
       font
     );
     drawLine(
@@ -340,7 +346,7 @@ const checkAndAddNewPage = (pdfDoc, cursorY, font, boldFont, italicFont) => {
     fieldY -= fieldSpacing;
 
     // Field 3: Sponsor License
-    drawText(page, sponsorLicense, rightValueX, fieldY, leftValueSize, font);
+    drawText(page, sponsorLicense, rightValueX, fieldY, headerFontSize, font);
     drawLine(
       page,
       rightFieldX,
