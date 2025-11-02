@@ -9,7 +9,7 @@ const alpha = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','
 // Move line items a bit to the left to reduce gap from checkboxes
 const lineItemContentStartX = 130;
 // Checkboxes config
-const CHECKBOX_SIZE = 14;               // slightly smaller boxes
+const CHECKBOX_SIZE = 12;               // slightly smaller boxes
 const CHECKBOX_COUNT = 4;               // I, NI, NP, D
 const CHECKBOX_MIN_SPACING = 6;         // tighten gaps between boxes
 const CHECKBOX_MAX_SPACING = 14;        // cap spacing so it doesn't spread too wide
@@ -387,6 +387,8 @@ async function createPdf(req, res) {
       link: 'https://www.trec.texas.gov',
     });
   }
+  // Flatten form fields so checkboxes are not editable in the final PDF
+  try { pdfDoc.getForm().flatten(); } catch {}
   const finalPdfBytes = await pdfDoc.save();
   fs.writeFileSync(path.join(process.cwd(), 'finalPdf.pdf'), finalPdfBytes);
   res.json({ ok: true, message: 'pdf created successfully' });

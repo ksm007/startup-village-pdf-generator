@@ -41,7 +41,7 @@ const alpha = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','
 // Move line items a bit to the left to reduce gap from checkboxes
 const lineItemContentStartX=130;
 const MINIMUM_SPACE_NEEDED = 50; // Minimum space needed at bottom of page
-const CHECKBOX_SIZE = 14;
+const CHECKBOX_SIZE = 12;
 const CHECKBOX_COUNT = 4;
 const CHECKBOX_MIN_SPACING = 6;
 const CHECKBOX_MAX_SPACING = 14;
@@ -417,7 +417,8 @@ async function sectionPdfWorker(section) {
 
 
 
-  // save assembled PDF
+  // flatten fields to make checkboxes uneditable, then save
+  try { headerDoc.getForm().flatten(); } catch {}
   const finalPdfBytes = await headerDoc.save()
 
   // write to disk for inspection
