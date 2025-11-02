@@ -5,6 +5,7 @@ const fs = require('fs');
 // Use built-in http/https for downloading images (avoid ESM node-fetch)
 const http = require('http');
 const https = require('https');
+const Jimp = require('jimp');
 
 let pageHeaderBytes=null;
 
@@ -565,22 +566,36 @@ async function fetchAndEmbedImage(url, doc) {
         res.on('end', async () => {
           try {
             const buffer = Buffer.concat(chunks);
-            const lower = url.toLowerCase();
-            if (lower.endsWith('.png')) {
-              return resolve(await doc.embedPng(buffer));
-            }
-            if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
-              return resolve(await doc.embedJpg(buffer));
-            }
-            // fallback: try jpg then png
+            // Recompress to JPEG with capped dimensions and quality to reduce PDF size
             try {
-              return resolve(await doc.embedJpg(buffer));
-            } catch (e1) {
-              try {
+              const img = await Jimp.read(buffer);
+              const IMAGE_MAX_DIM = 1600;
+              const IMAGE_JPEG_QUALITY = 70;
+              const maxSide = Math.max(img.bitmap.width, img.bitmap.height);
+              if (maxSide > IMAGE_MAX_DIM) {
+                const scale = IMAGE_MAX_DIM / maxSide;
+                img.resize(Math.round(img.bitmap.width * scale), Math.round(img.bitmap.height * scale));
+              }
+              img.background(0xffffffff);
+              const jpgBuf = await img.quality(IMAGE_JPEG_QUALITY).getBufferAsync(Jimp.MIME_JPEG);
+              return resolve(await doc.embedJpg(jpgBuf));
+            } catch (recompErr) {
+              const lower = url.toLowerCase();
+              if (lower.endsWith('.png')) {
                 return resolve(await doc.embedPng(buffer));
-              } catch (e2) {
-                console.error('Failed to embed as JPG or PNG for', url, e1.message, e2.message);
-                return resolve(null);
+              }
+              if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+                return resolve(await doc.embedJpg(buffer));
+              }
+              try {
+                return resolve(await doc.embedJpg(buffer));
+              } catch (e1) {
+                try {
+                  return resolve(await doc.embedPng(buffer));
+                } catch (e2) {
+                  console.error('Failed to embed as JPG or PNG for', url, e1.message, e2.message);
+                  return resolve(null);
+                }
               }
             }
           } catch (err) {

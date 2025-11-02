@@ -4,6 +4,7 @@ const path = require('path');
 const http = require('http');
 const https = require('https');
 const buildTrecHeaderPdf = require('./create-header-page');
+const Jimp = require('jimp');
 
 const alpha = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
 // Move line items a bit to the left to reduce gap from checkboxes
@@ -23,6 +24,9 @@ const GRID_COLUMNS_DEFAULT = 3; // target number of columns
 const GRID_GUTTER = 12;         // horizontal spacing between cells
 const GRID_MAX_CELL_HEIGHT = 240; // maximum image height per cell (without caption)
 const RIGHT_MARGIN = 20;        // right page margin for content column
+// Image compression defaults
+const IMAGE_MAX_DIM = 1600;     // max width/height for embedded images
+const IMAGE_JPEG_QUALITY = 70;  // JPEG quality for recompression
 
 function intToRoman(num) {
   if (!Number.isFinite(num) || num <= 0) return '';
@@ -291,11 +295,26 @@ async function fetchAndEmbedImage(url, doc) {
         res.on('end', async () => {
           try {
             const buffer = Buffer.concat(chunks);
-            const lower = url.toLowerCase();
-            if (lower.endsWith('.png')) return resolve(await doc.embedPng(buffer));
-            if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return resolve(await doc.embedJpg(buffer));
-            try { return resolve(await doc.embedJpg(buffer)); } catch (e1) {
-              try { return resolve(await doc.embedPng(buffer)); } catch (e2) { return resolve(null); }
+            // Recompress to JPEG with capped dimensions to reduce file size
+            try {
+              const img = await Jimp.read(buffer);
+              const maxSide = Math.max(img.bitmap.width, img.bitmap.height);
+              if (maxSide > IMAGE_MAX_DIM) {
+                const scale = IMAGE_MAX_DIM / maxSide;
+                img.resize(Math.round(img.bitmap.width * scale), Math.round(img.bitmap.height * scale));
+              }
+              // Set white background in case of transparency before JPEG
+              img.background(0xffffffff);
+              const jpgBuf = await img.quality(IMAGE_JPEG_QUALITY).getBufferAsync(Jimp.MIME_JPEG);
+              return resolve(await doc.embedJpg(jpgBuf));
+            } catch (recompErr) {
+              // Fallback to original behavior if recompress fails
+              const lower = url.toLowerCase();
+              if (lower.endsWith('.png')) return resolve(await doc.embedPng(buffer));
+              if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return resolve(await doc.embedJpg(buffer));
+              try { return resolve(await doc.embedJpg(buffer)); } catch (e1) {
+                try { return resolve(await doc.embedPng(buffer)); } catch (e2) { return resolve(null); }
+              }
             }
           } catch (err) { return resolve(null); }
         });

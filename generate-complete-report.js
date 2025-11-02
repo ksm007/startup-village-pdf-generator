@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const https = require("https");
 const http = require("http");
+const sharp = require("sharp");
 
 /**
  * Complete Inspection Report Generator
@@ -53,8 +54,27 @@ function wrapText(text, font, fontSize, maxWidth) {
   return lines;
 }
 
-// Download image from URL with caching
+// Download image from URL with caching and compression
 const imageCache = new Map();
+
+// Compress image buffer to reduce PDF size
+async function compressImageBuffer(buffer) {
+  try {
+    // Compress JPEG images with quality 60 and max width 1200px
+    const compressedBuffer = await sharp(buffer)
+      .resize(1200, null, {
+        withoutEnlargement: true,
+        fit: "inside",
+      })
+      .jpeg({ quality: 60 })
+      .toBuffer();
+
+    return compressedBuffer;
+  } catch (error) {
+    console.error("Error compressing image:", error.message);
+    return buffer; // Return original if compression fails
+  }
+}
 
 function downloadImage(url) {
   // Return cached image if available
@@ -90,10 +110,11 @@ function downloadImage(url) {
 
           const chunks = [];
           response.on("data", (chunk) => chunks.push(chunk));
-          response.on("end", () => {
+          response.on("end", async () => {
             const buffer = Buffer.concat(chunks);
-            imageCache.set(url, buffer); // Cache the result
-            resolve(buffer);
+            const compressedBuffer = await compressImageBuffer(buffer);
+            imageCache.set(url, compressedBuffer); // Cache the compressed result
+            resolve(compressedBuffer);
           });
           response.on("error", reject);
         }
@@ -215,7 +236,7 @@ async function createCoverPage(pdfDoc, inspectionData, options = {}) {
         image = await pdfDoc.embedJpg(imageBytes);
       }
 
-      const imgDims = image.scale(0.5);
+      const imgDims = image.scale(0.3); // Reduced from 0.5 to compress
       const maxImgWidth = width - margin * 2;
       const maxImgHeight = 300;
 
@@ -998,7 +1019,7 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
               }
 
               // Single image sizing - for side placement
-              const imgDims = image.scale(0.25);
+              const imgDims = image.scale(0.15); // Reduced from 0.25 to compress
               const maxImgWidth = 170;
               const maxImgHeight = 200;
 
@@ -1028,18 +1049,35 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
                 height: imgHeight,
               });
 
-              // Add short caption below the image
-              const shortName = `Photo ${comment.commentNumber || ""}`;
-              page.drawText(shortName, {
-                x: imageX,
-                y: imageY - imgHeight - 12,
-                size: fontSize - 2,
-                font: timesRomanFont,
-                color: rgb(0.5, 0.5, 0.5),
-              });
+              // Add caption below the image (use caption/description from photo object)
+              const photoObj = comment.photos[0];
+              const captionText =
+                photoObj.caption ||
+                photoObj.description ||
+                `Photo ${comment.commentNumber || ""}`;
+              const maxCaptionWidth = imgWidth;
+              const captionLines = wrapText(
+                captionText,
+                timesRomanFont,
+                fontSize - 2,
+                maxCaptionWidth
+              );
 
-              // Adjust currentY to be below both text and image
-              const imageBottom = imageY - imgHeight - 25;
+              let captionY = imageY - imgHeight - 12;
+              for (const line of captionLines.slice(0, 2)) {
+                // Max 2 lines for caption
+                page.drawText(line, {
+                  x: imageX,
+                  y: captionY,
+                  size: fontSize - 2,
+                  font: timesRomanFont,
+                  color: rgb(0.4, 0.4, 0.4),
+                });
+                captionY -= fontSize - 2 + 2;
+              }
+
+              // Adjust currentY to be below both text and image including caption
+              const imageBottom = captionY - 10;
               currentY = Math.min(textEndY, imageBottom);
             } catch (imgError) {
               console.error(
@@ -1098,7 +1136,7 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
                     image = await pdfDoc.embedJpg(imageBytes);
                   }
 
-                  const imgDims = image.scale(0.35); // Enlarged from 0.25
+                  const imgDims = image.scale(0.2); // Reduced from 0.35 to compress
                   const maxImgHeight = 200; // Enlarged from 150
 
                   imgWidth = imgDims.width;
@@ -1205,15 +1243,32 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
                   });
                 }
 
-                // Short caption
-                const shortName = isVideo ? `Video ${i + 1}` : `Photo ${i + 1}`;
-                page.drawText(shortName, {
-                  x: imgX,
-                  y: currentY - imgHeight - 12,
-                  size: fontSize - 2,
-                  font: timesRomanFont,
-                  color: rgb(0, 0, 0),
-                });
+                // Add caption with actual text from photo/video object
+                const mediaData = mediaItem.data;
+                const mediaCaptionText =
+                  mediaData.caption ||
+                  mediaData.description ||
+                  (isVideo ? `Video ${i + 1}` : `Photo ${i + 1}`);
+                const maxMediaCaptionWidth = imgBoxWidth;
+                const mediaCaptionLines = wrapText(
+                  mediaCaptionText,
+                  timesRomanFont,
+                  fontSize - 3,
+                  maxMediaCaptionWidth
+                );
+
+                let mediaCaptionY = currentY - imgHeight - 12;
+                for (const line of mediaCaptionLines.slice(0, 2)) {
+                  // Max 2 lines
+                  page.drawText(line, {
+                    x: imgX,
+                    y: mediaCaptionY,
+                    size: fontSize - 3,
+                    font: timesRomanFont,
+                    color: rgb(0.4, 0.4, 0.4),
+                  });
+                  mediaCaptionY -= fontSize - 3 + 2;
+                }
               } catch (mediaError) {
                 console.error(
                   `  ⚠️  Failed to load media ${i + 1} for comment ${
@@ -1274,7 +1329,7 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
                     image = await pdfDoc.embedJpg(imageBytes);
                   }
 
-                  const imgDims = image.scale(0.3); // Increased from 0.2 for larger display
+                  const imgDims = image.scale(0.18); // Reduced from 0.3 to compress
                   const maxImgHeight = 150; // Increased from 120
 
                   imgWidth = imgDims.width;
@@ -1384,15 +1439,32 @@ async function generateSectionPage(pdfDoc, section, options = {}) {
                   });
                 }
 
-                // Short caption with black text
-                const shortName = isVideo ? `Video ${i + 1}` : `Photo ${i + 1}`;
-                page.drawText(shortName, {
-                  x: imgX,
-                  y: rowStartY - imgHeight - 12,
-                  size: fontSize - 2,
-                  font: timesRomanFont,
-                  color: rgb(0, 0, 0),
-                });
+                // Add caption with actual text from photo/video object
+                const gridMediaData = mediaItem.data;
+                const gridCaptionText =
+                  gridMediaData.caption ||
+                  gridMediaData.description ||
+                  (isVideo ? `Video ${i + 1}` : `Photo ${i + 1}`);
+                const maxGridCaptionWidth = imgBoxWidth;
+                const gridCaptionLines = wrapText(
+                  gridCaptionText,
+                  timesRomanFont,
+                  fontSize - 3,
+                  maxGridCaptionWidth
+                );
+
+                let gridCaptionY = rowStartY - imgHeight - 12;
+                for (const line of gridCaptionLines.slice(0, 1)) {
+                  // Max 1 line for 3-grid
+                  page.drawText(line, {
+                    x: imgX,
+                    y: gridCaptionY,
+                    size: fontSize - 3,
+                    font: timesRomanFont,
+                    color: rgb(0.4, 0.4, 0.4),
+                  });
+                  gridCaptionY -= fontSize - 3 + 2;
+                }
 
                 col++;
 
@@ -1554,25 +1626,136 @@ async function generateCompleteReport(
     // Step 3: Now insert Table of Contents at position 2 (after cover) with actual page numbers
     if (includeTOC) {
       console.log("📋 Step 3: Creating Table of Contents with page numbers...");
-      const { createTableOfContents } = require("./create-table-of-contents");
-      const tocBytes = await createTableOfContents(sections, {
-        title: "Inspection Report - Table of Contents",
-        fontSize: 11,
-        includeLineItems: false,
-        sectionPageMap, // Pass the actual page numbers
+
+      // Create TOC page directly in the main PDF for proper linking
+      const timesRomanFont = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+      const timesRomanBold = await pdfDoc.embedFont(
+        StandardFonts.TimesRomanBold
+      );
+
+      const tocPage = pdfDoc.insertPage(1); // Insert at position 1 (after cover)
+      const { width, height } = tocPage.getSize();
+      const margin = 50;
+      const fontSize = 11;
+      const titleFontSize = 18;
+      const lineHeight = 20;
+      let currentY = height - margin;
+
+      // Draw title
+      const title = "Inspection Report - Table of Contents";
+      const titleWidth = timesRomanBold.widthOfTextAtSize(title, titleFontSize);
+      tocPage.drawText(title, {
+        x: (width - titleWidth) / 2,
+        y: currentY,
+        size: titleFontSize,
+        font: timesRomanBold,
+        color: rgb(0, 0, 0),
       });
 
-      const tocDoc = await PDFDocument.load(tocBytes);
-      const tocPages = await pdfDoc.copyPages(tocDoc, tocDoc.getPageIndices());
+      currentY -= titleFontSize + 30;
 
-      // Insert TOC pages at position 1 (after cover page at position 0)
-      for (let i = 0; i < tocPages.length; i++) {
-        pdfDoc.insertPage(1 + i, tocPages[i]);
+      // Draw horizontal line under title
+      tocPage.drawLine({
+        start: { x: margin, y: currentY },
+        end: { x: width - margin, y: currentY },
+        thickness: 2,
+        color: rgb(0, 0, 0),
+      });
+
+      currentY -= 30;
+
+      // Sort sections by order
+      const sortedSections = [...sections].sort((a, b) => a.order - b.order);
+
+      // Get all pages AFTER TOC insertion (so indices are correct)
+      const allPages = pdfDoc.getPages();
+
+      // Process each section
+      for (let i = 0; i < sortedSections.length; i++) {
+        const section = sortedSections[i];
+        const sectionNumber = section.sectionNumber || (i + 1).toString();
+        const sectionText = `${sectionNumber}. ${section.name}`;
+        const pageNumber = sectionPageMap[sectionNumber] || i + 3;
+
+        // Draw section name (clickable)
+        const sectionTextWidth = timesRomanBold.widthOfTextAtSize(
+          sectionText,
+          fontSize
+        );
+
+        tocPage.drawText(sectionText, {
+          x: margin,
+          y: currentY,
+          size: fontSize,
+          font: timesRomanBold,
+          color: rgb(0, 0.2, 0.8), // Blue color to indicate clickability
+        });
+
+        // Add clickable link annotation
+        // After TOC insertion at index 1, actual page index = pageNumber - 1
+        const targetPageIndex = pageNumber - 1; // pageNumber is 1-based, includes cover + TOC
+
+        if (targetPageIndex >= 0 && targetPageIndex < allPages.length) {
+          const targetPage = allPages[targetPageIndex];
+
+          // Create link annotation with proper structure
+          const linkAnnot = pdfDoc.context.register(
+            pdfDoc.context.obj({
+              Type: "Annot",
+              Subtype: "Link",
+              Rect: [
+                margin,
+                currentY - 2,
+                margin + sectionTextWidth,
+                currentY + fontSize + 2,
+              ],
+              Border: [0, 0, 0],
+              C: [0, 0, 1],
+              Dest: [targetPage.ref, "XYZ", null, null, 0],
+            })
+          );
+
+          // Get or create annotations array
+          let annotsArray = tocPage.node.Annots();
+          if (!annotsArray) {
+            annotsArray = pdfDoc.context.obj([]);
+            tocPage.node.set(pdfDoc.context.obj("Annots"), annotsArray);
+          }
+          annotsArray.push(linkAnnot);
+        }
+
+        // Draw dotted line
+        const dotsStartX = margin + sectionTextWidth + 10;
+        const pageNumText = pageNumber.toString();
+        const pageNumWidth = timesRomanFont.widthOfTextAtSize(
+          pageNumText,
+          fontSize
+        );
+        const dotsEndX = width - margin - pageNumWidth - 10;
+
+        // Draw dots
+        for (let x = dotsStartX; x < dotsEndX; x += 5) {
+          tocPage.drawCircle({
+            x: x,
+            y: currentY + 3,
+            size: 1,
+            color: rgb(0.5, 0.5, 0.5),
+          });
+        }
+
+        // Draw page number
+        tocPage.drawText(pageNumText, {
+          x: width - margin - pageNumWidth,
+          y: currentY,
+          size: fontSize,
+          font: timesRomanFont,
+          color: rgb(0, 0, 0),
+        });
+
+        currentY -= lineHeight;
       }
 
-      console.log(
-        `   ✅ Inserted ${tocPages.length} TOC page(s) after cover\n`
-      );
+      console.log(`   ✅ Inserted 1 TOC page(s) after cover\n`);
     }
 
     // Save the PDF
