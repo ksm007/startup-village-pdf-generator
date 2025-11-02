@@ -281,7 +281,7 @@ async function createPdf(req, res) {
 
   // Prepend TREC header pages at the beginning of the final PDF
   try {
-    const trecHeaderBytes = await buildTrecHeaderPdf({ inspection });
+    const trecHeaderBytes = await buildTrecHeaderPdf({ inspection }, { includeFooters: false });
     if (trecHeaderBytes) {
       const headerDoc = await PDFDocument.load(trecHeaderBytes);
       const headerPages = await pdfDoc.copyPages(headerDoc, headerDoc.getPageIndices());

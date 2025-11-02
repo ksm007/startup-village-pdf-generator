@@ -66,32 +66,34 @@ const drawText = (
 };
 
 // Helper to check if we need a new page and create one
-const checkAndAddNewPage = (pdfDoc, cursorY, font, boldFont, italicFont) => {
+const checkAndAddNewPage = (pdfDoc, cursorY, font, boldFont, italicFont, includeFooters = false) => {
   const MIN_Y = MARGIN + 30; // Minimum Y position before adding new page
   if (cursorY < MIN_Y) {
     const newPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
     const newCursorY = PAGE_HEIGHT - MARGIN;
 
-    // Add footer to the new page
-    const footerY = MARGIN - 10;
-    newPage.drawText("REI 7-6 (8/9/2021)", {
-      x: MARGIN,
-      y: footerY,
-      size: 8,
-      font: font,
-      color: BLACK,
-    });
+    if (includeFooters) {
+      // Add footer to the new page
+      const footerY = MARGIN - 10;
+      newPage.drawText("REI 7-6 (8/9/2021)", {
+        x: MARGIN,
+        y: footerY,
+        size: 8,
+        font: font,
+        color: BLACK,
+      });
 
-    const footerText =
-      "Promulgated by the Texas Real Estate Commission • (512) 936-3000 • www.trec.texas.gov";
-    const footerTextWidth = font.widthOfTextAtSize(footerText, 8);
-    newPage.drawText(footerText, {
-      x: (PAGE_WIDTH - footerTextWidth) / 2,
-      y: footerY,
-      size: 8,
-      font: font,
-      color: BLACK,
-    });
+      const footerText =
+        "Promulgated by the Texas Real Estate Commission • (512) 936-3000 • www.trec.texas.gov";
+      const footerTextWidth = font.widthOfTextAtSize(footerText, 8);
+      newPage.drawText(footerText, {
+        x: (PAGE_WIDTH - footerTextWidth) / 2,
+        y: footerY,
+        size: 8,
+        font: font,
+        color: BLACK,
+      });
+    }
 
     return { page: newPage, cursorY: newCursorY };
   }
@@ -103,6 +105,7 @@ async function buildTrecHeaderPdf(data, opts = {}) {
   try {
     const inspection = data?.inspection || {};
     const account = data?.account || {};
+    const includeFooters = !!opts.includeFooters;
 
     // Create PDF
     const pdfDoc = await PDFDocument.create();
@@ -386,7 +389,8 @@ async function buildTrecHeaderPdf(data, opts = {}) {
       cursorY - 30,
       font,
       boldFont,
-      italicFont
+      italicFont,
+      includeFooters
     );
     if (pageCheck) {
       page = pageCheck.page;
@@ -431,7 +435,8 @@ async function buildTrecHeaderPdf(data, opts = {}) {
         cursorY,
         font,
         boldFont,
-        italicFont
+        italicFont,
+        includeFooters
       );
       if (pageCheck) {
         page = pageCheck.page;
@@ -454,7 +459,8 @@ async function buildTrecHeaderPdf(data, opts = {}) {
       cursorY - 30,
       font,
       boldFont,
-      italicFont
+        italicFont,
+        includeFooters
     );
     if (pageCheck) {
       page = pageCheck.page;
@@ -489,7 +495,8 @@ async function buildTrecHeaderPdf(data, opts = {}) {
         cursorY,
         font,
         boldFont,
-        italicFont
+        italicFont,
+        includeFooters
       );
       if (pageCheck) {
         page = pageCheck.page;
@@ -512,7 +519,8 @@ async function buildTrecHeaderPdf(data, opts = {}) {
       cursorY - 30,
       font,
       boldFont,
-      italicFont
+        italicFont,
+        includeFooters
     );
     if (pageCheck) {
       page = pageCheck.page;
@@ -542,7 +550,8 @@ async function buildTrecHeaderPdf(data, opts = {}) {
         cursorY,
         font,
         boldFont,
-        italicFont
+        italicFont,
+        includeFooters
       );
       if (pageCheck) {
         page = pageCheck.page;
@@ -565,7 +574,8 @@ async function buildTrecHeaderPdf(data, opts = {}) {
       cursorY - 30,
       font,
       boldFont,
-      italicFont
+        italicFont,
+        includeFooters
     );
     if (pageCheck) {
       page = pageCheck.page;
@@ -622,7 +632,8 @@ async function buildTrecHeaderPdf(data, opts = {}) {
         cursorY,
         font,
         boldFont,
-        italicFont
+        italicFont,
+        includeFooters
       );
       if (pageCheck) {
         page = pageCheck.page;
@@ -659,20 +670,22 @@ async function buildTrecHeaderPdf(data, opts = {}) {
     // FOOTER - Page number area
     // ========================================================================
 
-    const footerY = MARGIN - 10;
-    drawText(page, "REI 7-6 (8/9/2021)", MARGIN, footerY, 8, font);
+    if (includeFooters) {
+      const footerY = MARGIN - 10;
+      drawText(page, "REI 7-6 (8/9/2021)", MARGIN, footerY, 8, font);
 
-    const footerText =
-      "Promulgated by the Texas Real Estate Commission • (512) 936-3000 • www.trec.texas.gov";
-    const footerTextWidth = font.widthOfTextAtSize(footerText, 8);
-    drawText(
-      page,
-      footerText,
-      (PAGE_WIDTH - footerTextWidth) / 2,
-      footerY,
-      8,
-      font
-    );
+      const footerText =
+        "Promulgated by the Texas Real Estate Commission • (512) 936-3000 • www.trec.texas.gov";
+      const footerTextWidth = font.widthOfTextAtSize(footerText, 8);
+      drawText(
+        page,
+        footerText,
+        (PAGE_WIDTH - footerTextWidth) / 2,
+        footerY,
+        8,
+        font
+      );
+    }
 
     // Save PDF
     const pdfBytes = await pdfDoc.save();
