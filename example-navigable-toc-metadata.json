@@ -1,0 +1,128 @@
+[
+  {
+    "id": "rN2Pv6qz514sJXmFzxzIP",
+    "name": "Inspection Report Overview",
+    "sectionNumber": "1",
+    "pageNumber": 2,
+    "order": 0
+  },
+  {
+    "id": "XpwBONevprgzABdkws0io",
+    "name": "General Inspection Disclosures",
+    "sectionNumber": "2",
+    "pageNumber": 3,
+    "order": 1
+  },
+  {
+    "id": "cLYDLdR477goH9Oy-WL6o",
+    "name": "Property Assessment Details",
+    "sectionNumber": "3",
+    "pageNumber": 4,
+    "order": 2
+  },
+  {
+    "id": "MkeMB9W7ozKPM8PxFhm4m",
+    "name": "Ground-Level Exterior Structures",
+    "sectionNumber": "4",
+    "pageNumber": 5,
+    "order": 3
+  },
+  {
+    "id": "AXcE43UVbEdH0k6SXs5ZN",
+    "name": "Roofing System Assessment",
+    "sectionNumber": "5",
+    "pageNumber": 6,
+    "order": 4
+  },
+  {
+    "id": "1T3aazlClNTPe24bR_whq",
+    "name": "Integrated Appliances",
+    "sectionNumber": "6",
+    "pageNumber": 7,
+    "order": 5
+  },
+  {
+    "id": "SYO1Qbxv-b3g1gfteph05",
+    "name": "Interior Elements: Doors, Windows, and Walls",
+    "sectionNumber": "7",
+    "pageNumber": 8,
+    "order": 6
+  },
+  {
+    "id": "Qr3JFoC8jdrKEh9F7nG2C",
+    "name": "Building Foundation and Structural Components",
+    "sectionNumber": "8",
+    "pageNumber": 9,
+    "order": 7
+  },
+  {
+    "id": "5istSnRmqMPuHtOlxEEQP",
+    "name": "Crawlspace Assessment",
+    "sectionNumber": "9",
+    "pageNumber": 10,
+    "order": 8
+  },
+  {
+    "id": "Tf2PVaB5vo8aOrpDz9wS_",
+    "name": "Fireplace and Venting Systems",
+    "sectionNumber": "10",
+    "pageNumber": 11,
+    "order": 9
+  },
+  {
+    "id": "805eaRDrHArodl3pB5yrp",
+    "name": "Water and Waste Systems",
+    "sectionNumber": "11",
+    "pageNumber": 12,
+    "order": 10
+  },
+  {
+    "id": "adcuE0G_bC-Wg-G9JaECW",
+    "name": "Electrical Systems",
+    "sectionNumber": "12",
+    "pageNumber": 13,
+    "order": 11
+  },
+  {
+    "id": "I0JrvKw2miZMQZxCOxUHw",
+    "name": "Overhead Space Assessment",
+    "sectionNumber": "13",
+    "pageNumber": 14,
+    "order": 12
+  },
+  {
+    "id": "pY00b8zJPUxkAFCkPbD6X",
+    "name": "Heating, Ventilation, and Air Conditioning Systems",
+    "sectionNumber": "14",
+    "pageNumber": 15,
+    "order": 13
+  },
+  {
+    "id": "e-keWTwusCv6SIkC5w7UO",
+    "name": "Garage Systems and Components",
+    "sectionNumber": "15",
+    "pageNumber": 16,
+    "order": 14
+  },
+  {
+    "id": "2tWoNaZI7mEerfiR_2xrn",
+    "name": "Detached Structures",
+    "sectionNumber": "16",
+    "pageNumber": 17,
+    "order": 15
+  },
+  {
+    "id": "N9CozLs2cgahJKOr3E1cu",
+    "name": "General Observations, Environmental, and Pest Considerations",
+    "sectionNumber": "17",
+    "pageNumber": 18,
+    "order": 16
+  },
+  {
+    "id": "IA-Z__7JqJ8h23ricZyGG",
+    "name": "Inspection Completion Summary",
+    "sectionNumber": "18",
+    "pageNumber": 19,
+    "order": 17
+  }
+]

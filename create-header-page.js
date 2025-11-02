@@ -4,7 +4,7 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 // ---- File paths ------------------------------------------------------------
 const JSON_PATH = "./inspection.json";
 const OUTPUT_PATH = "./TREC_Header_Page.pdf";
-const LOGO_PATH = "./assets/image.png"; // Optional: path to TREC logo if available
+const LOGO_PATH = "./assets/image.  png"; // Optional: path to TREC logo if available
 
 // ---- Page Layout Constants -------------------------------------------------
 const PAGE_WIDTH = 612; // 8.5 inches

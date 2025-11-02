@@ -1,0 +1,110 @@
+[
+  {
+    "number": "1",
+    "name": "Inspection Report Overview",
+    "lineItemCount": 1,
+    "order": 0
+  },
+  {
+    "number": "2",
+    "name": "General Inspection Disclosures",
+    "lineItemCount": 1,
+    "order": 1
+  },
+  {
+    "number": "3",
+    "name": "Property Assessment Details",
+    "lineItemCount": 1,
+    "order": 2
+  },
+  {
+    "number": "4",
+    "name": "Ground-Level Exterior Structures",
+    "lineItemCount": 18,
+    "order": 3
+  },
+  {
+    "number": "5",
+    "name": "Roofing System Assessment",
+    "lineItemCount": 12,
+    "order": 4
+  },
+  {
+    "number": "6",
+    "name": "Integrated Appliances",
+    "lineItemCount": 12,
+    "order": 5
+  },
+  {
+    "number": "7",
+    "name": "Interior Elements: Doors, Windows, and Walls",
+    "lineItemCount": 12,
+    "order": 6
+  },
+  {
+    "number": "8",
+    "name": "Building Foundation and Structural Components",
+    "lineItemCount": 5,
+    "order": 7
+  },
+  {
+    "number": "9",
+    "name": "Crawlspace Assessment",
+    "lineItemCount": 5,
+    "order": 8
+  },
+  {
+    "number": "10",
+    "name": "Fireplace and Venting Systems",
+    "lineItemCount": 2,
+    "order": 9
+  },
+  {
+    "number": "11",
+    "name": "Water and Waste Systems",
+    "lineItemCount": 17,
+    "order": 10
+  },
+  {
+    "number": "12",
+    "name": "Electrical Systems",
+    "lineItemCount": 7,
+    "order": 11
+  },
+  {
+    "number": "13",
+    "name": "Overhead Space Assessment",
+    "lineItemCount": 4,
+    "order": 12
+  },
+  {
+    "number": "14",
+    "name": "Heating, Ventilation, and Air Conditioning Systems",
+    "lineItemCount": 11,
+    "order": 13
+  },
+  {
+    "number": "15",
+    "name": "Garage Systems and Components",
+    "lineItemCount": 6,
+    "order": 14
+  },
+  {
+    "number": "16",
+    "name": "Detached Structures",
+    "lineItemCount": 16,
+    "order": 15
+  },
+  {
+    "number": "17",
+    "name": "General Observations, Environmental, and Pest Considerations",
+    "lineItemCount": 1,
+    "order": 16
+  },
+  {
+    "number": "18",
+    "name": "Inspection Completion Summary",
+    "lineItemCount": 8,
+    "order": 17
+  }
+]
