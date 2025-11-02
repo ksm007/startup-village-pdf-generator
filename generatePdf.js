@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const https = require('https');
+const buildTrecHeaderPdf = require('./create-header-page');
 
 const alpha = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
 // Move line items a bit to the left to reduce gap from checkboxes
@@ -277,6 +278,18 @@ async function createPdf(req, res) {
   const dateStr = formatDate(dateMs);
   const headerText = fullAddr || dateStr ? `Report Identification: ${fullAddr}${fullAddr && dateStr ? ' - ' : ''}${dateStr}` : 'Report Identification';
   const pdfDoc = await PDFDocument.create();
+
+  // Prepend TREC header pages at the beginning of the final PDF
+  try {
+    const trecHeaderBytes = await buildTrecHeaderPdf({ inspection });
+    if (trecHeaderBytes) {
+      const headerDoc = await PDFDocument.load(trecHeaderBytes);
+      const headerPages = await pdfDoc.copyPages(headerDoc, headerDoc.getPageIndices());
+      for (const hp of headerPages) pdfDoc.addPage(hp);
+    }
+  } catch (e) {
+    console.warn('TREC header generation failed, continuing without header pages:', e?.message || e);
+  }
   const timesRomanFont = await pdfDoc.embedFont(StandardFonts.TimesRoman);
   const form = pdfDoc.getForm();
   let page = pdfDoc.addPage();

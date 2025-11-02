@@ -1,10 +1,10 @@
-import fs from "fs/promises";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+const fs = require("fs/promises");
+const { PDFDocument, StandardFonts, rgb } = require("pdf-lib");
 
 // ---- File paths ------------------------------------------------------------
 const JSON_PATH = "./inspection.json";
 const OUTPUT_PATH = "./TREC_Header_Page.pdf";
-const LOGO_PATH = "./assets/image.png"; // Optional: path to TREC logo if available
+const DEFAULT_LOGO_PATH = "./assets/image.png"; // Optional: path to TREC logo if available
 
 // ---- Page Layout Constants -------------------------------------------------
 const PAGE_WIDTH = 612; // 8.5 inches
@@ -98,16 +98,11 @@ const checkAndAddNewPage = (pdfDoc, cursorY, font, boldFont, italicFont) => {
   return null;
 };
 
-// ---- Main ------------------------------------------------------------------
-(async () => {
+// ---- Main builder function (exported) -------------------------------------
+async function buildTrecHeaderPdf(data, opts = {}) {
   try {
-    console.log("📖 Reading inspection data...");
-    const jsonStr = await fs.readFile(JSON_PATH, "utf8");
-    const data = JSON.parse(jsonStr);
-    const inspection = data.inspection || {};
-    const account = data.account || {};
-
-    console.log("✅ Parsed JSON data");
+    const inspection = data?.inspection || {};
+    const account = data?.account || {};
 
     // Create PDF
     const pdfDoc = await PDFDocument.create();
@@ -124,7 +119,7 @@ const checkAndAddNewPage = (pdfDoc, cursorY, font, boldFont, italicFont) => {
     const underlineFont = await pdfDoc.embedFont(
       StandardFonts.HelveticaOblique
     );
-    console.log("✅ Embedded fonts");
+  // console.log("Fonts embedded for TREC header");
 
     let cursorY = PAGE_HEIGHT - MARGIN;
 
@@ -135,11 +130,12 @@ const checkAndAddNewPage = (pdfDoc, cursorY, font, boldFont, italicFont) => {
     // Try to load TREC logo if available
     let logoImage = null;
     try {
-      const logoBytes = await fs.readFile(LOGO_PATH);
+      const logoPath = opts.logoPath || DEFAULT_LOGO_PATH;
+      const logoBytes = await fs.readFile(logoPath);
       logoImage = await pdfDoc.embedPng(logoBytes);
-      console.log("✅ Loaded TREC logo");
+      // console.log("Loaded TREC logo");
     } catch (e) {
-      console.log("⚠️  TREC logo not found, drawing text placeholder");
+      // Logo optional; draw placeholder
     }
 
     // Draw TREC logo or placeholder
@@ -679,13 +675,28 @@ const checkAndAddNewPage = (pdfDoc, cursorY, font, boldFont, italicFont) => {
     );
 
     // Save PDF
-    console.log("💾 Saving PDF...");
     const pdfBytes = await pdfDoc.save();
-    await fs.writeFile(OUTPUT_PATH, pdfBytes);
-    console.log(`✅ Successfully saved: ${OUTPUT_PATH}`);
+    return pdfBytes;
   } catch (error) {
-    console.error("❌ Error:", error.message);
-    console.error(error.stack);
-    process.exit(1);
+    // Re-throw to caller
+    throw error;
   }
-})();
+}
+
+module.exports = buildTrecHeaderPdf;
+
+// Support running as a script to emit a standalone header PDF
+if (require.main === module) {
+  (async () => {
+    try {
+      const jsonStr = await fs.readFile(JSON_PATH, "utf8");
+      const data = JSON.parse(jsonStr);
+      const bytes = await buildTrecHeaderPdf(data);
+      await fs.writeFile(OUTPUT_PATH, bytes);
+      console.log(`Wrote ${OUTPUT_PATH}`);
+    } catch (err) {
+      console.error("Failed to create TREC header PDF:", err?.message || err);
+      process.exit(1);
+    }
+  })();
+}
