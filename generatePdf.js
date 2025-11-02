@@ -142,6 +142,8 @@ async function addCommentsToLineItem(comment, page, font, margin, pos, doc, comm
   const romanFont = await doc.embedFont(StandardFonts.TimesRoman);
   const boldFont = await doc.embedFont(StandardFonts.TimesRomanBold);
   const italicFont = await doc.embedFont(StandardFonts.TimesRomanItalic);
+  const SEPARATOR_GAP = 10;
+  const LINE_THICKNESS = 1;
 
   const drawWrapped = async (text, x, maxWidth, size = 10, lineH = 12, useFont = romanFont) => {
     if (!text) return 0;
@@ -154,6 +156,11 @@ async function addCommentsToLineItem(comment, page, font, margin, pos, doc, comm
     }
     return lines.length;
   };
+
+  // compute line geometry once for bottom separator
+  const pageWidth = currentPage.getSize().width;
+  const lineStartX = lineItemContentStartX;
+  const lineWidth = pageWidth - lineStartX - RIGHT_MARGIN;
 
   const labelText = `${commentIndex + 1}. ${comment?.label || ''}`;
   // Space for label
@@ -222,7 +229,11 @@ async function addCommentsToLineItem(comment, page, font, margin, pos, doc, comm
     }
   }
 
-  pos.y -= 8;
+  // Bottom separator line after this comment with equal gap above and below
+  pos.y -= SEPARATOR_GAP;
+  currentPage = await ensureSpace(doc, pos, currentPage, font, LINE_THICKNESS, headerText);
+  currentPage.drawRectangle({ x: lineStartX, y: pos.y, width: lineWidth, height: LINE_THICKNESS, color: rgb(0.85, 0.85, 0.85) });
+  pos.y -= SEPARATOR_GAP;
   return currentPage;
 }
 

@@ -179,10 +179,14 @@ async function addCommentsTitleToLineItem(lineItem, page, font, margin, height, 
 }
 
 
+const RIGHT_MARGIN = 20; // right page margin for content column
+
 async function addCommentsToLineItem(comment, page, font, margin, pos, doc, commentIndex) {
     let currentPage = page;
     const boldFont = await doc.embedFont(StandardFonts.TimesRomanBold);
     const italicFont = await doc.embedFont(StandardFonts.TimesRomanItalic);
+  const SEPARATOR_GAP = 10;
+  const LINE_THICKNESS = 1;
     
     // Calculate space needed for this comment
     const labelText = (commentIndex+1)+". "+(comment?.label || "");
@@ -193,7 +197,12 @@ async function addCommentsToLineItem(comment, page, font, margin, pos, doc, comm
         currentPage = await checkAndCreateNewPage(doc, pos, currentPage, font);
     }
     
-    // Draw comment number and label
+  // Prepare geometry for bottom separator (single line after comment)
+  const pageWidth = currentPage.getSize().width;
+  const lineStartX = lineItemContentStartX;
+  const lineWidth = pageWidth - lineStartX - RIGHT_MARGIN;
+
+  // Draw comment number and label
     currentPage.drawText(labelText, {
         x: lineItemContentStartX,
         y: pos.y,
@@ -324,7 +333,13 @@ async function addCommentsToLineItem(comment, page, font, margin, pos, doc, comm
         }
     }
     
-    pos.y -= 8; // Reduced spacing after comment
+    // Bottom separator with equal gap
+    pos.y -= SEPARATOR_GAP;
+    if (pos.y < MINIMUM_SPACE_NEEDED + LINE_THICKNESS) {
+      currentPage = await checkAndCreateNewPage(doc, pos, currentPage, font);
+    }
+    currentPage.drawRectangle({ x: lineStartX, y: pos.y, width: lineWidth, height: LINE_THICKNESS, color: rgb(0.85, 0.85, 0.85) });
+    pos.y -= SEPARATOR_GAP;
     return currentPage;
 }
 
