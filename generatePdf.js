@@ -423,7 +423,7 @@ async function createPdf(req, res) {
   // Flatten form fields so checkboxes are not editable in the final PDF
   try { pdfDoc.getForm().flatten(); } catch {}
   const finalPdfBytes = await pdfDoc.save();
-  fs.writeFileSync(path.join(process.cwd(), 'finalPdf.pdf'), finalPdfBytes);
+  fs.writeFileSync(path.join(process.cwd(), 'output.pdf'), finalPdfBytes);
   res.json({ ok: true, message: 'pdf created successfully' });
 }
 
